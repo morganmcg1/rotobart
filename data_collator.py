@@ -111,4 +111,4 @@ class DataCollatorForTextInfilling:
             new_example = example[0][~to_remove[i]]
             new_inputs[i, 0:new_example.shape[0]] = new_example
 
-        return new_inputs, labels
+        return jnp.array(new_inputs), jnp.array(labels)
