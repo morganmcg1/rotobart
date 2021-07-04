@@ -55,11 +55,16 @@ from transformers import (
     set_seed,
 )
 
-
+# RotoBART imports
 from modeling_flax_rotobart import *
 from configuration_rotobart import *
 from transformers import BartTokenizer
 
+# Setup Colab TPU
+print("Setting up colab TPU")
+import jax.tools.colab_tpu
+jax.tools.colab_tpu.setup_tpu()
+print(f"Colab TPU setup complete, jax.device_count: {jax.device_count()}")
 
 # Cache the result
 has_tensorboard = is_tensorboard_available()
@@ -676,6 +681,8 @@ if __name__ == "__main__":
             train_metrics.append(train_metric)
 
         train_time += time.time() - train_start
+
+        print(f"Epoch... ({epoch + 1}/{num_epochs} | Loss: {train_metric['loss']}, Learning Rate: {train_metric['learning_rate']})")
 
         epochs.write(
             f"Epoch... ({epoch + 1}/{num_epochs} | Loss: {train_metric['loss']}, Learning Rate: {train_metric['learning_rate']})"
