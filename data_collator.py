@@ -23,11 +23,16 @@ class DataCollatorForTextInfilling:
 
     def __call__(self, examples: List[Union[List[int], jnp.ndarray, Dict[str, jnp.ndarray]]]
                  ) -> Dict[str, jnp.ndarray]:
+        batch = {}
         # Handle dict or lists with proper padding and conversion to tensor.
-        if isinstance(examples[0], (dict, BatchEncoding)):
+        if isinstance(examples, (dict, BatchEncoding)):
+            examples = examples['input_ids']     
+            batch["input_ids"] =  _collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
+
+        elif isinstance(examples[0], (dict, BatchEncoding)):
             batch = self.tokenizer.pad(examples, return_tensors="jax", pad_to_multiple_of=self.pad_to_multiple_of)
         else:
-            batch = {"input_ids": _collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)}
+            batch["input_ids"] =  _collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
 
         # If special token mask has been preprocessed, pop it from the dict.
         special_tokens_mask = batch.pop("special_tokens_mask", None)
@@ -75,11 +80,18 @@ class DataCollatorForTextInfilling:
         lengths = lengths[:idx + 1]
 
         # select span start indices
-        token_indices = jnp.argwhere(is_token==0)
+        #print("IS TOKEN")
+        #print(is_token)
+        #print(sum(list(map(lambda x: 1 if(x) else 0, is_token[0]))))
+        token_indices = np.argwhere(is_token==1)
+        #print("TOKEN INDICES")
+        #print(token_indices)
         span_starts = permutation(token_indices.shape[0])[:lengths.shape[0]]
 
         # prepare mask
         masked_indices = np.array(token_indices[span_starts])
+        #print("MASKED INDICES")
+        #print(masked_indices)
         mask = np.full_like(labels, fill_value=False)
 
         # mask span start indices
