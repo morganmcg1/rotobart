@@ -191,6 +191,9 @@ class DataTrainingArguments:
     use_wandb: bool = field(
       default=False, metadata={"help": "Use Weights & Biases for experiment tracking"}
     )
+    testing: bool = field(
+      default=False, metadata={"help": "If testing, only 1 train batch will be used"}
+    )
 
 @flax.struct.dataclass
 class DummyFlaxDataCollatorForRotoBARTMLM:
@@ -548,7 +551,9 @@ if __name__ == "__main__":
     for step in range(num_train_steps):
         # ======================== Training ================================
         try:
-            samples = advance_iter_and_group_samples(training_iter, train_batch_size, max_seq_length)
+            if (data_args.testing and step == 0) or not data_args.testing:
+              samples = advance_iter_and_group_samples(training_iter, train_batch_size, max_seq_length)
+            
         except StopIteration:
             # Once the end of the dataset stream is reached, the training iterator
             # is reinitialized and reshuffled and a new eval dataset is randomely chosen.
