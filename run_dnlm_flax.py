@@ -323,6 +323,7 @@ if __name__ == "__main__":
     #   datasets['train'] = datasets['train'].add_item({'text':tmp_text})
     #   datasets['validation'] = datasets['validation'].add_item({'text':tmp_text})
 
+    # Load Datasets
     # Train Dataset - Stream The Pile dataset
     print('Loading train data')
     train_dataset = load_dataset(
@@ -346,7 +347,12 @@ if __name__ == "__main__":
       cache_dir=model_args.cache_dir,
     )
 
-    # Preprocessing the datasets.
+    # Do Setence Permutation on all samples 
+    # permutation = ()
+    # shuffled_train_dataset = shuffled_train_dataset.map(permutation)
+    # eval_dataset = eval_dataset.map(permutation)
+
+    # Do Tokenization
     # Load tokenizer
     tokenizer = BartTokenizerFast.from_pretrained(
         model_args.tokenizer_name, cache_dir=model_args.cache_dir
@@ -367,6 +373,11 @@ if __name__ == "__main__":
         tokenize_function,
         batched=True
     )
+
+    # Do Text Infilling
+    # text_filling = ()
+    # tokenized_train_dataset = tokenized_train_dataset.map(text_filling)
+    # tokenized_eval_dataset = tokenized_eval_dataset.map(text_filling)
 
     # # TODO: Maybe remove this? 
     # # create "decoder_input_ids" and "labels" data for model inputs
