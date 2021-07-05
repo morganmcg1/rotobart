@@ -57,12 +57,6 @@ from modeling_flax_rotobart import *
 from configuration_rotobart import *
 from transformers import BartTokenizer
 
-# Setup Colab TPU
-print("Setting up colab TPU")
-import jax.tools.colab_tpu
-jax.tools.colab_tpu.setup_tpu()
-print(f"Colab TPU setup complete, jax.device_count: {jax.device_count()}")
-
 # MODEL_CONFIG_CLASSES = list(FLAX_MODEL_FOR_MASKED_LM_MAPPING.keys())
 # MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
@@ -194,6 +188,9 @@ class DataTrainingArguments:
     testing: bool = field(
       default=False, metadata={"help": "If testing, only 1 train batch will be used"}
     )
+    colab_tpu: bool = field(
+      default=False, metadata={"help": "Whether you are training on a colab TPU"}
+    )
 
 @flax.struct.dataclass
 class DummyFlaxDataCollatorForRotoBARTMLM:
@@ -297,6 +294,13 @@ if __name__ == "__main__":
             "Use --overwrite_output_dir to overcome."
         )
 
+    # Setup Colab TPU
+    if data_args.colab_tpu:
+      print("Setting up colab TPU")
+      import jax.tools.colab_tpu
+      jax.tools.colab_tpu.setup_tpu()
+      print(f"Colab TPU setup complete, jax.device_count: {jax.device_count()}")
+
     # TODO: Fix logger
     # # Setup logging
     # logging.basicConfig(
@@ -352,6 +356,25 @@ if __name__ == "__main__":
       buffer_size=data_args.shuffle_buffer_size,
       seed=training_args.seed
     )
+
+    # DATA PROCESSING SCHEMATIC
+    # 0. Tokenize
+    #
+    # 1. Permutation
+    # Input column names: ['input_ids']
+    # Output column names: ['input_ids','permuted_ids']
+    #
+    # 2. TextInill
+    # Input column names: ['input_ids','permuted_ids']
+    # Output column names: ['input_ids', 'permuted_ids', 'infilled_ids']
+    #
+    # 3. Collate
+    # Input column names: ['input_ids', 'permuted_ids', 'infilled_ids']
+    # copy 'input_ids' to 'decoder_input_ids'
+    # 'input_ids' renamed to 'labels'
+    # 'infilled_ids' renamed to 'input_ids'
+    # 
+    # Output column names: ['input_ids', 'decoder_input_ids', 'labels']
 
     # Do Setence Permutation on all samples 
     # permutation = ()
