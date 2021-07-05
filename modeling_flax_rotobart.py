@@ -919,7 +919,7 @@ class FlaxRotoBARTModule(nn.Module):
             input_ids=decoder_input_ids,
             attention_mask=decoder_attention_mask,
             position_ids=decoder_position_ids,
-            encoder_hidden_states=encoder_outputs[0],
+            encoder_hidden_states=encoder_outputs.last_hidden_state,
             encoder_attention_mask=attention_mask,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
