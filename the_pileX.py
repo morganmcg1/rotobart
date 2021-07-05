@@ -44,5 +44,5 @@ class Pile(datasets.GeneratorBasedBuilder):
                 for line in f:
 #                     sentence = {"text": line["text"], "pile_set_name": line["meta"]["pile_set_name"] }
 #                     yield id_, {"id": id_, "text": line["text"]}
-                      yield id_, {text: line["text"]}
+                      yield id_, {"text": line["text"]}
                       id_ += 1
