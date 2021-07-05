@@ -21,8 +21,7 @@ class Pile(datasets.GeneratorBasedBuilder):
             features=datasets.Features(
                 {
                     "id": datasets.Value("int64"),
-                    "text": datasets.Value("string"),
-                    "pile_set_name": datasets.Value("string"),
+                    "text": datasets.Value("string")
                 }
             )
         )
