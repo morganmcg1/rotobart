@@ -20,7 +20,7 @@ class Pile(datasets.GeneratorBasedBuilder):
         return datasets.DatasetInfo(
             features=datasets.Features(
                 {
-                    "id": datasets.Value("int64"),
+#                     "id": datasets.Value("int64"),
                     "text": datasets.Value("string")
                 }
             )
@@ -43,5 +43,6 @@ class Pile(datasets.GeneratorBasedBuilder):
                 f = jsonlines.Reader(f)
                 for line in f:
 #                     sentence = {"text": line["text"], "pile_set_name": line["meta"]["pile_set_name"]}
-                    yield id_, {"id": id_, "text": line["text"]}
+#                     yield id_, {"id": id_, "text": line["text"]}
+                      yield id_, line["text"]
                     id_ += 1
