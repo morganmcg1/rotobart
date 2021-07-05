@@ -49,13 +49,14 @@ from transformers import (
     set_seed,
 )
 
-# TODO: import from rotobart file
-from transformers.models.t5.modeling_flax_t5 import shift_tokens_right
+## TODO: import from rotobart file
+#from transformers.models.bart.configuration_bart import shift_tokens_right
 
 # RotoBART imports
 from modeling_flax_rotobart import *
 from configuration_rotobart import *
 from transformers import BartTokenizer
+from data_collator import DataCollatorForTextInfilling
 
 # MODEL_CONFIG_CLASSES = list(FLAX_MODEL_FOR_MASKED_LM_MAPPING.keys())
 # MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
@@ -402,12 +403,13 @@ if __name__ == "__main__":
         tokenize_function,
         batched=True
     )
+    
 
     # Do Text Infilling
-    # text_filling = ()
-    # tokenized_train_dataset = tokenized_train_dataset.map(text_filling)
-    # tokenized_eval_dataset = tokenized_eval_dataset.map(text_filling)
-
+    masking_collator = DataCollatorForTextInfilling(tokenizer)
+    tokenized_train_dataset = tokenized_train_dataset.map(masking_collator)
+    tokenized_eval_dataset = tokenized_eval_dataset.map(masking_collator)
+    print("Success!")
     # Log to Weights and Biases 
     if data_args.use_wandb:
       import wandb
