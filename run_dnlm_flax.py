@@ -188,6 +188,9 @@ class DataTrainingArguments:
     num_eval_samples: int = field(
       default=50000, metadata={"help": "The number of samples to be used for evaluation"}
     )
+    use_wandb: bool = field(
+      default=False, metadata={"help": "Use Weights & Biases for experiment tracking"}
+    )
 
 @flax.struct.dataclass
 class DummyFlaxDataCollatorForRotoBARTMLM:
@@ -332,12 +335,6 @@ if __name__ == "__main__":
       cache_dir=model_args.cache_dir,
       streaming=True)
 
-    # Shuffle the training dataset
-    shuffled_train_dataset = train_dataset.shuffle(
-      buffer_size=data_args.shuffle_buffer_size,
-      seed=training_args.seed
-    )
-    
     print('Loading eval data')
     # Test Dataset - Stream The Pile dataset
     eval_dataset = load_dataset(
@@ -345,6 +342,12 @@ if __name__ == "__main__":
       split="test",
       streaming=True,
       cache_dir=model_args.cache_dir,
+    )
+
+    # Shuffle the training dataset
+    shuffled_train_dataset = train_dataset.shuffle(
+      buffer_size=data_args.shuffle_buffer_size,
+      seed=training_args.seed
     )
 
     # Do Setence Permutation on all samples 
@@ -379,17 +382,10 @@ if __name__ == "__main__":
     # tokenized_train_dataset = tokenized_train_dataset.map(text_filling)
     # tokenized_eval_dataset = tokenized_eval_dataset.map(text_filling)
 
-    # # TODO: Maybe remove this? 
-    # # create "decoder_input_ids" and "labels" data for model inputs
-    # def add_decoder_ids_labels(examples):
-    #   return {
-    #       "decoder_input_ids": examples['input_ids'],
-    #       "labels": examples['input_ids'],
-    #       }  
-    # # print(datasets["train"].column_names)
-    # tokenized_datasets = tokenized_datasets.map(
-    #   add_decoder_ids_labels, batched=True
-    # )
+    # Log to Weights and Biases 
+    if data_args.use_wandb:
+      import wandb
+      wandb.init(entity='wandb', project='rotobart', sync_tensorboard=True)
 
     # Enable tensorboard only on the master node
     has_tensorboard = is_tensorboard_available()
