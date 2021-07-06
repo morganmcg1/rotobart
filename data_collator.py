@@ -32,11 +32,15 @@ class DataCollatorForTextInfilling:
                 examples = [examples]
             
             batch["input_ids"] =  _collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
+            batch["decoder_input_ids"] = _collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
+
 
         elif isinstance(examples[0], (dict, BatchEncoding)):
             batch = self.tokenizer.pad(examples, return_tensors="jax", pad_to_multiple_of=self.pad_to_multiple_of)
         else:
             batch["input_ids"] =  _collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
+            batch["decoder_input_ids"] =  _collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
+
 
         # If special token mask has been preprocessed, pop it from the dict.
         special_tokens_mask = batch.pop("special_tokens_mask", None)
