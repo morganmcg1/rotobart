@@ -26,13 +26,23 @@ class DataCollatorForTextInfilling:
         batch = {}
         # Handle dict or lists with proper padding and conversion to tensor.
         if isinstance(examples, (dict, BatchEncoding)):
-            examples = examples['input_ids']     
-            #bs of one
-            if type(examples[0]) is int:
-                examples = [examples]
+            examples_ids = examples['input_ids']     
+            if 'decoder_input_ids' in examples.keys():
+                examples_dec = examples['decoder_input_ids']
+            else:
+                examples_dec = examples_ids
             
-            batch["input_ids"] =  _collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
-            batch["decoder_input_ids"] = _collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
+
+            #bs of one
+            if type(examples_ids[0]) is int:
+                examples_ids = [examples_ids]
+            #bs of one
+            if type(examples_dec[0]) is int:
+                examples_dec = [examples_dec]
+
+            
+            batch["input_ids"] =  _collate_batch(examples_ids, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
+            batch["decoder_input_ids"] = _collate_batch(examples_dec, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
             batch["decoder_input_ids"] = batch["decoder_input_ids"].tolist()
 
 
