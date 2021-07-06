@@ -33,17 +33,14 @@ class DataCollatorForTextInfilling:
             
             batch["input_ids"] =  _collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
             batch["decoder_input_ids"] = _collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
-            if batch["decoder_input_ids"].shape[0] == 1:
-                batch["decoder_input_ids"] = batch["decoder_input_ids"][0].tolist()
-            #print(batch)
+            batch["decoder_input_ids"] = batch["decoder_input_ids"].tolist()
 
 
         elif isinstance(examples[0], (dict, BatchEncoding)):
             batch = self.tokenizer.pad(examples, return_tensors="jax", pad_to_multiple_of=self.pad_to_multiple_of)
         else:
             batch["input_ids"] =  _collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
-            batch["decoder_input_ids"] =  _collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
-            print(batch)
+            batch["decoder_input_ids"] =  _collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of).tolist()
 
         # If special token mask has been preprocessed, pop it from the dict.
         special_tokens_mask = batch.pop("special_tokens_mask", None)
@@ -132,6 +129,6 @@ class DataCollatorForTextInfilling:
         for i, example in enumerate(np.split(inputs_copy, indices_or_sections=new_inputs.shape[0], axis=0)):
             new_example = example[0][~to_remove[i]]
             new_inputs[i, 0:new_example.shape[0]] = new_example
-
-        #Flatten and convert to list. Input must be bs of one in this configuration, which I do not enjoy...
-        return new_inputs[0].tolist(), labels[0].tolist()
+            
+        #batching now fixed
+        return new_inputs.tolist(), labels.tolist()
