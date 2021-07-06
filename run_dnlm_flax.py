@@ -56,7 +56,7 @@ from transformers import (
 from modeling_flax_rotobart import *
 from configuration_rotobart import *
 from transformers import BartTokenizer
-from data_collator import DataCollatorForTextInfilling
+from data_collator import DataCollatorForSentencePermutation, DataCollatorForTextInfilling, SentenceTokenize
 
 # MODEL_CONFIG_CLASSES = list(FLAX_MODEL_FOR_MASKED_LM_MAPPING.keys())
 # MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
@@ -391,28 +391,43 @@ if __name__ == "__main__":
     tokenizer = BartTokenizerFast.from_pretrained(
         model_args.tokenizer_name, cache_dir=model_args.cache_dir
     )
+    #Used for sentence permutation
+    sent_tok = SentenceTokenize()
+    #Batching is not yet supported. Not sure if necessary?
+    sent_tokenized_train_dataset = shuffled_train_dataset.map(
+        sent_tok
+    )
+    sent_tokenized_eval_dataset = eval_dataset.map(
+        sent_tok
+    ) 
 
     text_column_name = "text" 
     def tokenize_function(examples):
         return tokenizer(examples[text_column_name], return_attention_mask=False)
 
     print('Tokenizing train data')
-    tokenized_train_dataset = shuffled_train_dataset.map(
+    tokenized_train_dataset = sent_tokenized_train_dataset.map(
         tokenize_function,
         batched=True
     )
 
     print('Tokenizing eval data')
-    tokenized_eval_dataset = eval_dataset.map(
+    tokenized_eval_dataset = sent_tokenized_eval_dataset.map(
         tokenize_function,
         batched=True
     )
     
+    #Do sentence permutation
+    permute_sent = DataCollatorForSentencePermutation(tokenizer)
+    tokenized_train_dataset = tokenized_train_dataset.map(permute_sent)
+    tokenized_eval_dataset = tokenized_eval_dataset.map(permute_sent)
+
     # Do Text Infilling
     masking_collator = DataCollatorForTextInfilling(tokenizer)
     tokenized_train_dataset = tokenized_train_dataset.map(masking_collator)
     tokenized_eval_dataset = tokenized_eval_dataset.map(masking_collator)
-    print("Success!")
+
+    print("Collate deployed successfully.")
 
     # Log to Weights and Biases 
     if data_args.use_wandb and jax.process_index() == 0:
