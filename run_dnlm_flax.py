@@ -637,7 +637,7 @@ if __name__ == "__main__":
             eval_metrics = []
 
             # save checkpoint after each epoch and push checkpoint to the hub
-            if jax.process_index() == 0:
+            if jax.process_index() == 0 & training_args.save_strategy=="epoch":
                 params = jax.device_get(jax.tree_map(lambda x: x[0], state.params))
                 model.save_pretrained(
                     training_args.output_dir,
@@ -645,6 +645,17 @@ if __name__ == "__main__":
                     push_to_hub=training_args.push_to_hub,
                     commit_message=f"Saving weights and logs of step {step+1}",
                 )
+
+
+        # save checkpoint on steps and push checkpoint to the hub
+        if (training_args.save_steps % (step+1)) == 0 & training_args.save_strategy=="steps":
+            params = jax.device_get(jax.tree_map(lambda x: x[0], state.params))
+            model.save_pretrained(
+                training_args.output_dir,
+                params=params,
+                push_to_hub=training_args.push_to_hub,
+                commit_message=f"Saving weights and logs of step {step+1}"
+            )
 
         # update tqdm bar
         steps.update(1)
