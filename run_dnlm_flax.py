@@ -411,7 +411,7 @@ if __name__ == "__main__":
     # Log to Weights and Biases 
     if data_args.use_wandb:
       import wandb
-      wandb.init(entity='wandb', project='rotobart', sync_tensorboard=True)
+      wandb.init(entity='wandb', project='hf-flax-rotobart', sync_tensorboard=True)
 
     # Enable tensorboard only on the master node
     has_tensorboard = is_tensorboard_available()
