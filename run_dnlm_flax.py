@@ -121,6 +121,10 @@ class ModelArguments:
             "help": "Dimension of decoder feedforward network"
         },
     )
+    use_bf16: bool = field(
+      default=False, metadata={"help": "Train in bf16 or not"}
+    )
+
 
 
 @dataclass
@@ -404,16 +408,19 @@ if __name__ == "__main__":
         batched=True
     )
     
-
     # Do Text Infilling
     masking_collator = DataCollatorForTextInfilling(tokenizer)
     tokenized_train_dataset = tokenized_train_dataset.map(masking_collator)
     tokenized_eval_dataset = tokenized_eval_dataset.map(masking_collator)
     print("Success!")
+
     # Log to Weights and Biases 
-    if data_args.use_wandb:
+    if data_args.use_wandb and jax.process_index() == 0:
       import wandb
       wandb.init(entity='wandb', project='hf-flax-rotobart', sync_tensorboard=True)
+      wandb.config.update(training_args)  # optional, log your configs
+      wandb.config.update(model_args)  # optional, log your configs
+      wandb.config.update(data_args)   # optional, log your configs
 
     # Enable tensorboard only on the master node
     has_tensorboard = is_tensorboard_available()
@@ -450,6 +457,12 @@ if __name__ == "__main__":
     #model = FlaxAutoModelForMaskedLM.from_config(config, seed=training_args.seed, dtype=getattr(jnp, model_args.dtype))
     model = FlaxRotoBARTForConditionalGeneration(config=config, seed=training_args.seed, dtype=getattr(jnp, model_args.dtype))
     
+    # Convert model to bf16
+    if model_args.use_bf16:
+        def to_bf16(t):
+            return jax.tree_map(lambda x: x.astype(jnp.bfloat16) if x.dtype == jnp.float32 else x, t)
+        model.params = to_bf16(model.params)
+
     # Data collator
     max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
     data_collator = DummyFlaxDataCollatorForRotoBARTMLM(
