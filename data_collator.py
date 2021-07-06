@@ -27,6 +27,10 @@ class DataCollatorForTextInfilling:
         # Handle dict or lists with proper padding and conversion to tensor.
         if isinstance(examples, (dict, BatchEncoding)):
             examples = examples['input_ids']     
+            #bs of one
+            if type(examples[0]) is int:
+                examples = [examples]
+            
             batch["input_ids"] =  _collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
 
         elif isinstance(examples[0], (dict, BatchEncoding)):
@@ -40,7 +44,6 @@ class DataCollatorForTextInfilling:
         batch["input_ids"], batch["labels"] = self.mask_tokens(
             batch["input_ids"], special_tokens_mask=special_tokens_mask
         )
-
         return batch
 
     def mask_tokens(self,
@@ -123,4 +126,5 @@ class DataCollatorForTextInfilling:
             new_example = example[0][~to_remove[i]]
             new_inputs[i, 0:new_example.shape[0]] = new_example
 
-        return jnp.array(new_inputs), jnp.array(labels)
+        #Flatten and convert to list. Input must be bs of one in this configuration, which I do not enjoy...
+        return new_inputs[0].tolist(), labels[0].tolist()
