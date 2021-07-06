@@ -20,7 +20,7 @@ Molestie ac feugiat sed lectus vestibulum mattis. Ut sem nulla pharetra diam sit
 """
 print("JAX")
 inputs = tokenizer(lorem_ispum, max_length=1024, padding=True, truncation=True)
-
+print(inputs)
 collator = DataCollatorForTextInfilling(tokenizer)
 
 print(collator(inputs))
