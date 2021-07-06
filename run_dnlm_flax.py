@@ -637,7 +637,7 @@ if __name__ == "__main__":
             eval_metrics = []
 
             # save checkpoint after each epoch and push checkpoint to the hub
-            if jax.process_index() == 0 & training_args.save_strategy=="epoch":
+            if (jax.process_index() == 0) & (training_args.save_strategy=="epoch"):
                 params = jax.device_get(jax.tree_map(lambda x: x[0], state.params))
                 model.save_pretrained(
                     training_args.output_dir,
@@ -648,7 +648,7 @@ if __name__ == "__main__":
 
 
         # save checkpoint on steps and push checkpoint to the hub
-        if (training_args.save_steps % (step+1)) == 0 & training_args.save_strategy=="steps":
+        if ((training_args.save_steps % (step+1)) == 0) & (training_args.save_strategy=="steps"):
             params = jax.device_get(jax.tree_map(lambda x: x[0], state.params))
             model.save_pretrained(
                 training_args.output_dir,
