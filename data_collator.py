@@ -1,7 +1,14 @@
+import sys
+
+# Set up TPU
+print("Setting up colab TPU")
+import jax.tools.colab_tpu
+jax.tools.colab_tpu.setup_tpu()
+print(f"Colab TPU setup complete, jax.device_count: {jax.device_count()}")
+
 import math
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, NewType, Optional, Tuple, Union
-
 
 import jax.numpy as jnp
 import numpy as np
@@ -11,6 +18,8 @@ from jax import random, ops
 
 from transformers.tokenization_utils_base import BatchEncoding, PreTrainedTokenizerBase
 from transformers.data.data_collator import _collate_batch
+
+nltk.download('punkt')
 
 @dataclass
 class DataCollatorForTextInfilling:
@@ -178,7 +187,7 @@ class DataCollatorForSentencePermutation:
 
         # Tokens that are full stops, where the previous token is not
         sentence_ends = (full_stops[1:] * ~full_stops[:-1]).nonzero()[0] + 2
-        result = source.clone()
+        result = source.copy()
 
         num_sentences = jnp.size(sentence_ends, 0)
         num_to_permute = math.ceil((num_sentences * 2 * self.permutate_sentence_ratio) / 2.0)

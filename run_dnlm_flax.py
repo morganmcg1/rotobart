@@ -28,6 +28,7 @@ from typing import Dict, List, Optional
 import numpy as np
 from datasets import load_dataset
 from tqdm import tqdm
+import nltk
 
 import flax
 import jax
@@ -42,7 +43,8 @@ from transformers import (
     BatchEncoding,
     HfArgumentParser,
     PreTrainedTokenizerBase,
-    BartTokenizerFast,
+    #BartTokenizerFast,
+    DebertaV2Tokenizer,
     TensorType,
     TrainingArguments,
     is_tensorboard_available,
@@ -121,10 +123,21 @@ class ModelArguments:
             "help": "Dimension of decoder feedforward network"
         },
     )
+    decoder_ffn_dim: Optional[int] = field(default=256,
+        metadata={"help": "Dimension of decoder feedforward network"})
+    d_model: Optional[int] = field(default=1024,
+        metadata={"help": "Dimension of model"})
+    vocab_size: Optional[int] = field(default=50265,
+        metadata={"help": "Vocab size"})
+    max_position_embeddings: Optional[int] = field(default=1024,
+        metadata={"help": "Max position embeddings"})
+    encoder_layerdrop: Optional[float] = field(default=0.0,
+        metadata={"help": "Max position embeddings"})
+    decoder_layerdrop: Optional[float] = field(default=0.0,
+        metadata={"help": "Max position embeddings"})
     use_bf16: bool = field(
       default=False, metadata={"help": "Train in bf16 or not"}
     )
-
 
 
 @dataclass
@@ -135,6 +148,9 @@ class DataTrainingArguments:
 
     dataset_name: Optional[str] = field(
         default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."}
+    )
+    dataset_path: Optional[str] = field(
+        default="./pile.py", metadata={"help": "Path to custom dataset file."}
     )
     dataset_config_name: Optional[str] = field(
         default=None, metadata={"help": "The configuration name of the dataset to use (via the datasets library)."}
@@ -196,28 +212,6 @@ class DataTrainingArguments:
     colab_tpu: bool = field(
       default=False, metadata={"help": "Whether you are training on a colab TPU"}
     )
-
-@flax.struct.dataclass
-class DummyFlaxDataCollatorForRotoBARTMLM:
-    """
-      DUMMY DATACOLLATOR
-    """
-    tokenizer: PreTrainedTokenizerBase
-    input_length: int
-    pad_token_id: int
-    decoder_start_token_id: int
-
-    def __call__(self, examples: List[Dict[str, np.ndarray]]) -> Dict[str, np.ndarray]:
-
-        batch = self.tokenizer.pad(examples, return_tensors=TensorType.NUMPY)
-
-        # If special token mask has been preprocessed, pop it from the dict.
-        special_tokens_mask = batch.pop("special_tokens_mask", None)
-
-        batch["decoder_input_ids"] = batch["input_ids"]
-        batch["labels"] = batch["input_ids"]
-
-        return batch
 
 
 def generate_batch_splits(samples_idx: jnp.ndarray, batch_size: int) -> jnp.ndarray:
@@ -342,7 +336,7 @@ if __name__ == "__main__":
     # Train Dataset - Stream The Pile dataset
     print('Loading train data')
     train_dataset = load_dataset(
-      "./pile.py", 
+      data_args.dataset_path, 
       split="train",
       cache_dir=model_args.cache_dir,
       streaming=True)
@@ -350,7 +344,7 @@ if __name__ == "__main__":
     print('Loading eval data')
     # Test Dataset - Stream The Pile dataset
     eval_dataset = load_dataset(
-      "./pile.py",
+      data_args.dataset_path, 
       split="test",
       streaming=True,
       cache_dir=model_args.cache_dir,
@@ -362,38 +356,10 @@ if __name__ == "__main__":
       seed=training_args.seed
     )
 
-    # DATA PROCESSING SCHEMATIC
-    # 0. Tokenize
-    #
-    # 1. Permutation
-    # Input column names: ['input_ids']
-    # Output column names: ['input_ids','permuted_ids']
-    #
-    # 2. TextInill
-    # Input column names: ['input_ids','permuted_ids']
-    # Output column names: ['input_ids', 'permuted_ids', 'infilled_ids']
-    #
-    # 3. Collate
-    # Input column names: ['input_ids', 'permuted_ids', 'infilled_ids']
-    # copy 'input_ids' to 'decoder_input_ids'
-    # 'input_ids' renamed to 'labels'
-    # 'infilled_ids' renamed to 'input_ids'
-    # 
-    # Output column names: ['input_ids', 'decoder_input_ids', 'labels']
-
-    # Do Setence Permutation on all samples 
-    # permutation = ()
-    # shuffled_train_dataset = shuffled_train_dataset.map(permutation)
-    # eval_dataset = eval_dataset.map(permutation)
-
-    # Do Tokenization
-    # Load tokenizer
-    tokenizer = BartTokenizerFast.from_pretrained(
-        model_args.tokenizer_name, cache_dir=model_args.cache_dir
-    )
-    #Used for sentence permutation
+    # Sentence Tokenization
+    # Used for Sentence Permutation
     sent_tok = SentenceTokenize()
-    #Batching is not yet supported. Not sure if necessary?
+    # Batching is not yet supported. Not sure if necessary?
     sent_tokenized_train_dataset = shuffled_train_dataset.map(
         sent_tok
     )
@@ -401,23 +367,38 @@ if __name__ == "__main__":
         sent_tok
     ) 
 
+    # Do Tokenization
+    # Load tokenizer
+    # tokenizer = BartTokenizerFast.from_pretrained(
+    #     model_args.tokenizer_name, cache_dir=model_args.cache_dir
+    # )
+
+    tokenizer = DebertaV2Tokenizer.from_pretrained(
+      model_args.tokenizer_name, 
+      unk_token="<unk>",
+      sep_token="<sep>",
+      pad_token="<pad>",
+      cls_token="",
+      mask_token="<mask>",
+      eos_token="<s>",
+      bos_token="</s>"
+    )
+
     text_column_name = "text" 
     def tokenize_function(examples):
         return tokenizer(examples[text_column_name], return_attention_mask=False)
 
-    print('Tokenizing train data')
     tokenized_train_dataset = sent_tokenized_train_dataset.map(
         tokenize_function,
         batched=True
     )
 
-    print('Tokenizing eval data')
     tokenized_eval_dataset = sent_tokenized_eval_dataset.map(
         tokenize_function,
         batched=True
     )
     
-    #Do sentence permutation
+    # Do Sentence Permutation
     permute_sent = DataCollatorForSentencePermutation(tokenizer)
     tokenized_train_dataset = tokenized_train_dataset.map(permute_sent)
     tokenized_eval_dataset = tokenized_eval_dataset.map(permute_sent)
@@ -462,10 +443,15 @@ if __name__ == "__main__":
     # Load Model
     # TODO: Leverage AutoConfig
     config = RotoBARTConfig(
-      encoder_layers=ModelArguments.encoder_layers,
-      encoder_ffn_dim=ModelArguments.encoder_ffn_dim, 
-      decoder_layers=ModelArguments.decoder_layers, 
-      decoder_ffn_dim=ModelArguments.decoder_ffn_dim
+      encoder_layers=model_args.encoder_layers,
+      encoder_ffn_dim=model_args.encoder_ffn_dim, 
+      decoder_layers=model_args.decoder_layers, 
+      decoder_ffn_dim=model_args.decoder_ffn_dim,
+      d_model=model_args.d_model,
+      vocab_size=model_args.vocab_size,
+      max_position_embeddings=model_args.max_position_embeddings,
+      encoder_layerdrop=model_args.encoder_layerdrop,
+      decoder_layerdrop=model_args.decoder_layerdrop,
     )
 
     # TODO: Load model from config
@@ -480,12 +466,6 @@ if __name__ == "__main__":
 
     # Data collator
     max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
-    data_collator = DummyFlaxDataCollatorForRotoBARTMLM(
-      tokenizer=tokenizer,
-      input_length=max_seq_length,
-      pad_token_id=tokenizer.pad_token_id,
-      decoder_start_token_id=3 # TODO FIX THIS
-    )
 
     # Store some constant
     num_epochs = int(training_args.num_train_epochs)
@@ -595,7 +575,7 @@ if __name__ == "__main__":
     training_iter = iter(tokenized_train_dataset)
     eval_iter = iter(tokenized_eval_dataset)
 
-    print('Get eval samples')
+    print(f'Getting {data_args.num_eval_samples} eval samples')
     max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
     eval_samples = advance_iter_and_group_samples(eval_iter, data_args.num_eval_samples, max_seq_length)
 
