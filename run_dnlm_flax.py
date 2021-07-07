@@ -251,6 +251,10 @@ def advance_iter_and_group_samples(train_iterator, num_samples, max_seq_length):
         return result
 
     grouped_samples = group_texts(samples)
+
+    # print(grouped_samples)
+    # print(len(grouped_samples))
+
     return grouped_samples
 
 
@@ -391,7 +395,8 @@ if __name__ == "__main__":
         return tokenizer(examples[text_column_name], 
           return_attention_mask=False,
           truncation=True,
-          max_length=max_seq_length
+          max_length=max_seq_length,
+          padding='max_length'
           )
 
     tokenized_train_dataset = sent_tokenized_train_dataset.map(
@@ -582,6 +587,14 @@ if __name__ == "__main__":
     max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
     eval_samples = advance_iter_and_group_samples(eval_iter, data_args.num_eval_samples, max_seq_length)
 
+    def data_collator(examples):
+      print(examples)
+      batch = self.tokenizer.pad(examples, return_tensors=TensorType.NUMPY)
+      print()
+      print(batch)
+      print()
+      return batch
+
     print('Start training')
     steps = tqdm(range(num_train_steps), desc="Training...", position=0)
     for step in range(num_train_steps):
@@ -603,9 +616,11 @@ if __name__ == "__main__":
 
         # process input samples
         model_inputs = data_collator(samples)
+        model_inputs = samples
 
         # Model forward
         model_inputs = shard(model_inputs.data)
+        # model_inputs = shard(samples.data)
         state, train_metric, dropout_rngs = p_train_step(state, model_inputs, dropout_rngs)
 
         train_metrics.append(train_metric)

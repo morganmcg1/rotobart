@@ -69,6 +69,10 @@ class DataCollatorForTextInfilling:
         batch["input_ids"], batch["labels"] = self.mask_tokens(
             batch["input_ids"], special_tokens_mask=special_tokens_mask
         )
+
+        batch["input_ids"] = batch["input_ids"][0]
+        batch["decoder_input_ids"] = batch["decoder_input_ids"][0]
+        batch["labels"] = batch["labels"][0]
         return batch
 
     def mask_tokens(self,
