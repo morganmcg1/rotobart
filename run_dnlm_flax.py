@@ -326,16 +326,6 @@ if __name__ == "__main__":
     # Set seed before initializing model.
     set_seed(training_args.seed)
 
-    # # TODO: Replace this with the Pile
-    # datasets = load_dataset("tiny_shakespeare")
-    # tmp_text = """Lorem ipsum dolor sit amet, consectetur adipiscing 
-    # elit, sed do eiusmod tempor incididunt ut labore et dolore 
-    # magna aliqua. Nec feugiat
-    # """
-    # for i in range(200):
-    #   datasets['train'] = datasets['train'].add_item({'text':tmp_text})
-    #   datasets['validation'] = datasets['validation'].add_item({'text':tmp_text})
-
     # Load Datasets
     # Train Dataset - Stream The Pile dataset
     print('Loading train data')
@@ -349,7 +339,7 @@ if __name__ == "__main__":
     # Test Dataset - Stream The Pile dataset
     eval_dataset = load_dataset(
       data_args.dataset_path, 
-      split="test",
+      split="validation",
       streaming=True,
       cache_dir=model_args.cache_dir,
     )
@@ -588,11 +578,8 @@ if __name__ == "__main__":
     eval_samples = advance_iter_and_group_samples(eval_iter, data_args.num_eval_samples, max_seq_length)
 
     def data_collator(examples):
-      print(examples)
       batch = tokenizer.pad(examples, return_tensors=TensorType.NUMPY)
-      print()
-      print(batch)
-      print()
+      print(batch['input_ids'].shape)
       return batch
 
     print('Start training')
