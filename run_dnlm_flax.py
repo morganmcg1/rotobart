@@ -384,9 +384,15 @@ if __name__ == "__main__":
       bos_token="</s>"
     )
 
+    max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
     text_column_name = "text" 
+
     def tokenize_function(examples):
-        return tokenizer(examples[text_column_name], return_attention_mask=False)
+        return tokenizer(examples[text_column_name], 
+          return_attention_mask=False,
+          truncation=True,
+          max_length=max_seq_length
+          )
 
     tokenized_train_dataset = sent_tokenized_train_dataset.map(
         tokenize_function,
@@ -463,9 +469,6 @@ if __name__ == "__main__":
         def to_bf16(t):
             return jax.tree_map(lambda x: x.astype(jnp.bfloat16) if x.dtype == jnp.float32 else x, t)
         model.params = to_bf16(model.params)
-
-    # Data collator
-    max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
 
     # Store some constant
     num_epochs = int(training_args.num_train_epochs)
