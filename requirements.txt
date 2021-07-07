@@ -1,1 +1,10 @@
-git+https://github.com/huggingface/datasets@master
+jax[tpu]>=0.2.16
+flax
+datasets
+datasets[streaming,jsonlines,zstandard]
+transformers
+tokenizers
+sentencepiece
+wandb
+einops
+
