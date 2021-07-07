@@ -589,7 +589,7 @@ if __name__ == "__main__":
 
     def data_collator(examples):
       print(examples)
-      batch = self.tokenizer.pad(examples, return_tensors=TensorType.NUMPY)
+      batch = tokenizer.pad(examples, return_tensors=TensorType.NUMPY)
       print()
       print(batch)
       print()
@@ -616,7 +616,6 @@ if __name__ == "__main__":
 
         # process input samples
         model_inputs = data_collator(samples)
-        model_inputs = samples
 
         # Model forward
         model_inputs = shard(model_inputs.data)
