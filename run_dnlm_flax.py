@@ -251,6 +251,10 @@ def advance_iter_and_group_samples(train_iterator, num_samples, max_seq_length):
         return result
 
     grouped_samples = group_texts(samples)
+
+    # print(grouped_samples)
+    # print(len(grouped_samples))
+
     return grouped_samples
 
 
@@ -322,16 +326,6 @@ if __name__ == "__main__":
     # Set seed before initializing model.
     set_seed(training_args.seed)
 
-    # # TODO: Replace this with the Pile
-    # datasets = load_dataset("tiny_shakespeare")
-    # tmp_text = """Lorem ipsum dolor sit amet, consectetur adipiscing 
-    # elit, sed do eiusmod tempor incididunt ut labore et dolore 
-    # magna aliqua. Nec feugiat
-    # """
-    # for i in range(200):
-    #   datasets['train'] = datasets['train'].add_item({'text':tmp_text})
-    #   datasets['validation'] = datasets['validation'].add_item({'text':tmp_text})
-
     # Load Datasets
     # Train Dataset - Stream The Pile dataset
     print('Loading train data')
@@ -345,7 +339,7 @@ if __name__ == "__main__":
     # Test Dataset - Stream The Pile dataset
     eval_dataset = load_dataset(
       data_args.dataset_path, 
-      split="test",
+      split="validation",
       streaming=True,
       cache_dir=model_args.cache_dir,
     )
@@ -391,7 +385,8 @@ if __name__ == "__main__":
         return tokenizer(examples[text_column_name], 
           return_attention_mask=False,
           truncation=True,
-          max_length=max_seq_length
+          max_length=max_seq_length,
+          padding='max_length'
           )
 
     tokenized_train_dataset = sent_tokenized_train_dataset.map(
@@ -578,6 +573,11 @@ if __name__ == "__main__":
     training_iter = iter(tokenized_train_dataset)
     eval_iter = iter(tokenized_eval_dataset)
 
+    def data_collator(examples):
+      batch = tokenizer.pad(examples, return_tensors=TensorType.NUMPY)
+      print(batch['input_ids'].shape)
+      return batch
+
     print(f'Getting {data_args.num_eval_samples} eval samples')
     max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
     eval_samples = advance_iter_and_group_samples(eval_iter, data_args.num_eval_samples, max_seq_length)
@@ -606,6 +606,7 @@ if __name__ == "__main__":
 
         # Model forward
         model_inputs = shard(model_inputs.data)
+        # model_inputs = shard(samples.data)
         state, train_metric, dropout_rngs = p_train_step(state, model_inputs, dropout_rngs)
 
         train_metrics.append(train_metric)

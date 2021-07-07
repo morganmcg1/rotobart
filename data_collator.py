@@ -43,7 +43,6 @@ class DataCollatorForTextInfilling:
             else:
                 examples_dec = examples_ids
             
-
             #bs of one
             if type(examples_ids[0]) is int:
                 examples_ids = [examples_ids]
@@ -51,11 +50,9 @@ class DataCollatorForTextInfilling:
             if type(examples_dec[0]) is int:
                 examples_dec = [examples_dec]
 
-            
             batch["input_ids"] =  _collate_batch(examples_ids, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
             batch["decoder_input_ids"] = _collate_batch(examples_dec, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
             batch["decoder_input_ids"] = batch["decoder_input_ids"].tolist()
-
 
         elif isinstance(examples[0], (dict, BatchEncoding)):
             batch = self.tokenizer.pad(examples, return_tensors="jax", pad_to_multiple_of=self.pad_to_multiple_of)
@@ -69,6 +66,10 @@ class DataCollatorForTextInfilling:
         batch["input_ids"], batch["labels"] = self.mask_tokens(
             batch["input_ids"], special_tokens_mask=special_tokens_mask
         )
+
+        batch["input_ids"] = batch["input_ids"][0]
+        batch["decoder_input_ids"] = batch["decoder_input_ids"][0]
+        batch["labels"] = batch["labels"][0]
         return batch
 
     def mask_tokens(self,
