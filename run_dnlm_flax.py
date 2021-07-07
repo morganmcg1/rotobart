@@ -573,14 +573,14 @@ if __name__ == "__main__":
     training_iter = iter(tokenized_train_dataset)
     eval_iter = iter(tokenized_eval_dataset)
 
-    print(f'Getting {data_args.num_eval_samples} eval samples')
-    max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
-    eval_samples = advance_iter_and_group_samples(eval_iter, data_args.num_eval_samples, max_seq_length)
-
     def data_collator(examples):
       batch = tokenizer.pad(examples, return_tensors=TensorType.NUMPY)
       print(batch['input_ids'].shape)
       return batch
+
+    print(f'Getting {data_args.num_eval_samples} eval samples')
+    max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
+    eval_samples = advance_iter_and_group_samples(eval_iter, data_args.num_eval_samples, max_seq_length)
 
     print('Start training')
     steps = tqdm(range(num_train_steps), desc="Training...", position=0)
