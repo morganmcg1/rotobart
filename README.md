@@ -15,6 +15,23 @@
 
 ## Running the script
 
+### Script arguemnts
+
+Available model config arguments from script:
+```
+encoder_layers
+encoder_ffn_dim
+decoder_layers
+decoder_ffn_dim
+d_model
+vocab_size
+max_position_embeddings
+encoder_layerdrop
+decoder_layerdrop
+```
+
+`testting` : only uses 1 batch, for testing the script
+
 ```
 python rotobart/run_dnlm_flax.py \
   --output_dir rotobart_output \
