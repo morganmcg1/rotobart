@@ -5,11 +5,11 @@
 - Test on our TPU VM
 - Check we're using all TPU capacity
 - Define hyperparamters to train on
-- ~~Model parallel ?
-- ~~Train 128k sentencepiece tokenizer on the Pile
-- ~~add sentence permutation to train script
-- ~~add text infill to train script
-- ~~Add checkpointing
+- ~~Model parallel ?~~
+- ~~Train 128k sentencepiece tokenizer on the Pile~~
+- ~~add sentence permutation to train script~~
+- ~~add text infill to train script~~
+- ~~Add checkpointing~~
 
 
 
