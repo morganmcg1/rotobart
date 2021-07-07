@@ -38,7 +38,7 @@ python rotobart/run_dnlm_flax.py \
   --overwrite_output_dir \
   --dataset_path rotobart/pile.py \
   --model_name_or_path rotobart \
-  --tokenizer_name facebook/bart-large-cnn \
+  --tokenizer_name ./rotobart/vocab-2/the_pile.model \
   --shuffle_buffer_size 100_000 \
   --do_train --do_eval \
   --max_seq_length 1024 \
