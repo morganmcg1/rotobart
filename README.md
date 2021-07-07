@@ -16,9 +16,10 @@
 ## Running the script
 
 ```
-python run_dnlm_flax.py \
+python rotobart/run_dnlm_flax.py \
   --output_dir rotobart_output \
   --overwrite_output_dir \
+  --dataset_path rotobart/pile.py \
   --model_name_or_path rotobart \
   --tokenizer_name facebook/bart-large-cnn \
   --shuffle_buffer_size 100_000 \
@@ -28,15 +29,15 @@ python run_dnlm_flax.py \
   --decoder_layers 2 \
   --per_device_train_batch_size 2 \
   --per_device_eval_batch_size 2 \
-  --num_train_steps 1000 \
   --logging_steps 8 \
+  --num_train_steps 1000 \
   --eval_steps 1000 \
-  --save_steps 1000 \  # how often to checkpoint
+  --save_steps 1000 \
   --num_eval_samples 100 \
   --warmup_steps 30 \
   --learning_rate 1e-4 \
-  --use_wandb \  # Turn on weights and biases logging
-  --testing \    # 1 batch training
-  --colab_tpu \  # if running on colab TPU
-  --use_bf16     # convert model to bf16
+  --use_wandb \
+  --testing \
+  --colab_tpu \
+  --use_bf16 \
 ```
