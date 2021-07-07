@@ -7,4 +7,5 @@ tokenizers
 sentencepiece
 wandb
 einops
+nltk
 
