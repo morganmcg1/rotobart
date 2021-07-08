@@ -181,7 +181,7 @@ class DataCollatorForSentencePermutation:
         self.full_stop_index = self.tokenizer.eos_token_id
 
     def __call__(self, example):
-        source = jnp.array(example["input_ids"])
+        source = np.asarray(example["input_ids"])
         decoder_input_ids = example["input_ids"]
 
         full_stops = source == self.full_stop_index
@@ -189,20 +189,20 @@ class DataCollatorForSentencePermutation:
         # Tokens that are full stops, where the previous token is not
         sentence_ends = (full_stops[1:] * ~full_stops[:-1]).nonzero()[0] + 2
         result = source.copy()
-
-        num_sentences = jnp.size(sentence_ends, 0)
+        
+        num_sentences = np.size(sentence_ends, 0)
         num_to_permute = math.ceil((num_sentences * 2 * self.permutate_sentence_ratio) / 2.0)
         substitutions = random.permutation(self.random_key, num_sentences)[:num_to_permute]
-        ordering = jnp.arange(0, num_sentences)
+        ordering = np.arange(0, num_sentences)
         ordering = ops.index_update(
-            ordering, substitutions, substitutions[random.permutation(self.random_key, num_to_permute)]
+            ordering, substitutions, substitutions[np.random.permutation(num_to_permute)]
         )
-
+        
         index = 0
         for i in ordering:
             sentence = source[(sentence_ends[i - 1] if i > 0 else 0) : sentence_ends[i]]
             result = ops.index_update(result, ops.index[index : index + jnp.size(sentence, 0)], sentence)
-            index += jnp.size(sentence, 0)
+            index += np.size(sentence, 0)
 
         example["input_ids"] = np.asarray(result).tolist()
         example['decoder_input_ids'] = decoder_input_ids
