@@ -31,6 +31,7 @@ decoder_layerdrop
 ```
 
 `testting` : only uses 1 batch, for testing the script
+`adafactor`: will enable adafactor, removing the command will revert to Adam
 
 ```
 python rotobart/run_dnlm_flax.py \
@@ -57,4 +58,5 @@ python rotobart/run_dnlm_flax.py \
   --testing \
   --colab_tpu \
   --use_bf16 \
+  --adafactor
 ```
