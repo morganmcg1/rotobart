@@ -97,7 +97,7 @@ class DataCollatorForTextInfilling:
         #poisson_distribution = poisson(lam=self.poisson_lambda,size=(num_to_mask,))
         lengths = poisson(lam=self.poisson_lambda,size=(num_to_mask,))
         while np.cumsum(lengths, 0)[-1] < num_to_mask:
-            lengths = np.concatenate([lengths, poisson(rate=self.poisson_lambda,size=(num_to_mask,))])
+            lengths = np.concatenate([lengths, poisson(lam=self.poisson_lambda,size=(num_to_mask,))])
 
         # remove all spans of length 0
         # Note that BART inserts additional mask tokens where length == 0,
