@@ -127,7 +127,7 @@ class ModelArguments:
         metadata={"help": "Dimension of decoder feedforward network"})
     d_model: Optional[int] = field(default=1024,
         metadata={"help": "Dimension of model"})
-    vocab_size: Optional[int] = field(default=50265,
+    vocab_size: Optional[int] = field(default=128100,
         metadata={"help": "Vocab size"})
     max_position_embeddings: Optional[int] = field(default=1024,
         metadata={"help": "Max position embeddings"})
