@@ -571,8 +571,8 @@ if __name__ == "__main__":
     train_metrics = []
     eval_metrics = []
 
-    training_iter = BackgroundGenerator(iter(tokenized_train_dataset), max_prefetch=1_000)
-    eval_iter = BackgroundGenerator(iter(tokenized_eval_dataset), max_prefetch=1_000)
+    training_iter = BackgroundGenerator(iter(tokenized_train_dataset), max_prefetch=50_000)
+    eval_iter = BackgroundGenerator(iter(tokenized_eval_dataset), max_prefetch=50_000)
 
     def data_collator(examples):
       batch = tokenizer.pad(examples, return_tensors=TensorType.NUMPY)
@@ -597,7 +597,7 @@ if __name__ == "__main__":
             shuffle_seed += 1
             tokenized_datasets.set_epoch(shuffle_seed)
 
-            training_iter = BackgroundGenerator(iter(tokenized_train_dataset), max_prefetch=1_000)
+            training_iter = BackgroundGenerator(iter(tokenized_train_dataset), max_prefetch=50_000)
 
             eval_dataset = advance_iter_and_group_samples(eval_iter, data_args.num_eval_samples, max_seq_length)
             samples = advance_iter_and_group_samples(training_iter, train_batch_size, max_seq_length)
