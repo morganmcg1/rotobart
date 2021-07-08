@@ -50,6 +50,7 @@ from transformers import (
     is_tensorboard_available,
     set_seed,
 )
+from prefetch_generator import BackgroundGenerator
 
 ## TODO: import from rotobart file
 #from transformers.models.bart.configuration_bart import shift_tokens_right
@@ -577,12 +578,12 @@ if __name__ == "__main__":
     train_metrics = []
     eval_metrics = []
 
-    training_iter = iter(tokenized_train_dataset)
-    eval_iter = iter(tokenized_eval_dataset)
+    training_iter = BackgroundGenerator(iter(tokenized_train_dataset), max_prefetch=50_000)
+    eval_iter = BackgroundGenerator(iter(tokenized_eval_dataset), max_prefetch=50_000)
 
     def data_collator(examples):
       batch = tokenizer.pad(examples, return_tensors=TensorType.NUMPY)
-      print(batch['input_ids'].shape)
+      # print(batch['input_ids'].shape)
       return batch
 
     print(f'Getting {data_args.num_eval_samples} eval samples')
@@ -603,7 +604,7 @@ if __name__ == "__main__":
             shuffle_seed += 1
             tokenized_datasets.set_epoch(shuffle_seed)
 
-            training_iter = iter(tokenized_train_dataset)
+            training_iter = BackgroundGenerator(iter(tokenized_train_dataset), max_prefetch=50_000)
 
             eval_dataset = advance_iter_and_group_samples(eval_iter, data_args.num_eval_samples, max_seq_length)
             samples = advance_iter_and_group_samples(training_iter, train_batch_size, max_seq_length)
