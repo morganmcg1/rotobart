@@ -192,7 +192,7 @@ class DataCollatorForSentencePermutation:
         
         num_sentences = np.size(sentence_ends, 0)
         num_to_permute = math.ceil((num_sentences * 2 * self.permutate_sentence_ratio) / 2.0)
-        substitutions = random.permutation(self.random_key, num_sentences)[:num_to_permute]
+        substitutions = np.random.permutation(num_sentences)[:num_to_permute]
         ordering = np.arange(0, num_sentences)
         ordering = ops.index_update(
             ordering, substitutions, substitutions[np.random.permutation(num_to_permute)]
