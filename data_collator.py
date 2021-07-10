@@ -1,11 +1,5 @@
 import sys
 
-# Set up TPU
-print("Setting up colab TPU")
-import jax.tools.colab_tpu
-jax.tools.colab_tpu.setup_tpu()
-print(f"Colab TPU setup complete, jax.device_count: {jax.device_count()}")
-
 import math
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, NewType, Optional, Tuple, Union
