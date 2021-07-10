@@ -507,7 +507,7 @@ if __name__ == "__main__":
             learning_rate=linear_decay_lr_schedule_fn,
         )
     else:
-        adamw = optax.adamw(
+        optimizer = optax.adamw(
             learning_rate=linear_decay_lr_schedule_fn,
             b1=training_args.adam_beta1,
             b2=training_args.adam_beta2,
@@ -517,7 +517,7 @@ if __name__ == "__main__":
         )
 
     # Setup train state
-    state = train_state.TrainState.create(apply_fn=model.__call__, params=model.params, tx=adamw)
+    state = train_state.TrainState.create(apply_fn=model.__call__, params=model.params, tx=optimizer)
 
     def loss_fn(logits, labels):
         shift_logits = logits[..., :-1, :]
