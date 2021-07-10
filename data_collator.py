@@ -201,7 +201,7 @@ class DataCollatorForSentencePermutation:
         index = 0
         for i in ordering:
             sentence = source[(sentence_ends[i - 1] if i > 0 else 0) : sentence_ends[i]]
-            result = ops.index_update(result, ops.index[index : index + jnp.size(sentence, 0)], sentence)
+            result = ops.index_update(result, ops.index[index : index + sentence.size[0]], sentence)
             index += np.size(sentence, 0)
 
         example["input_ids"] = np.asarray(result).tolist()

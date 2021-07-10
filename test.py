@@ -6,7 +6,7 @@ from data_collator import DataCollatorForTextInfilling
 config = RotoBARTConfig(encoder_layers=2, \
     encoder_ffn_dim=256, decoder_layers=2, decoder_ffn_dim=256)
 
-#model = FlaxRotoBARTModel(config=config)
+model = FlaxRotoBARTModel(config=config)
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-large-cnn')
 special_tokens_dict = {'additional_special_tokens': ['[MASK]']}
 tokenizer.add_special_tokens(special_tokens_dict)
@@ -19,11 +19,12 @@ Quis auctor elit sed vulputate mi sit amet mauris commodo. Tempus urna et pharet
 Molestie ac feugiat sed lectus vestibulum mattis. Ut sem nulla pharetra diam sit amet. Varius sit amet mattis vulputate enim nulla aliquet. Bibendum arcu vitae elementum curabitur vitae nunc sed velit dignissim. Sit amet luctus venenatis lectus magna fringilla. Tellus rutrum tellus pellentesque eu tincidunt tortor aliquam nulla. Vel pharetra vel turpis nunc eget lorem dolor sed viverra. Hendrerit gravida rutrum quisque non tellus orci ac. Netus et malesuada fames ac turpis. Nibh nisl condimentum id venenatis a condimentum vitae sapien. Eu tincidunt tortor aliquam nulla facilisi. Pharetra massa massa ultricies mi quis hendrerit dolor. Nisl nisi scelerisque eu ultrices vitae auctor eu augue.
 """
 print("JAX")
-inputs = tokenizer(lorem_ispum, max_length=1024, padding=True, truncation=True)
-print(inputs)
-collator = DataCollatorForTextInfilling(tokenizer)
+inputs = tokenizer(lorem_ispum, max_length=1024, padding=True, truncation=True, return_tensors="np")
+#print(inputs)
+#collator = DataCollatorForTextInfilling(tokenizer)
 
-print(collator(inputs))
+#print(collator(inputs))
 
 #print(inputs)
-#model.encode(**inputs)
+print(inputs)
+model.encode(**inputs)
