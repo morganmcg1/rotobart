@@ -762,7 +762,8 @@ class FlaxRotoBARTEncoder(nn.Module):
         inputs_embeds = self.embed_tokens(input_ids) * self.embed_scale
 
         #embed_pos = self.embed_positions(position_ids + self.offset)    
-
+        position_ids = np.array(position_ids)
+        
         hidden_states = inputs_embeds #+ embed_pos
         hidden_states = self.layernorm_embedding(hidden_states)
         hidden_states = self.dropout_layer(hidden_states, deterministic=deterministic)
