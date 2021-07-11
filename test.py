@@ -12,6 +12,8 @@ special_tokens_dict = {'additional_special_tokens': ['[MASK]']}
 tokenizer.add_special_tokens(special_tokens_dict)
 
 
+
+
 lorem_ispum = """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Nec feugiat nisl pretium fusce id. Odio ut enim blandit volutpat maecenas volutpat. Tincidunt dui ut ornare lectus sit amet est placerat. Non tellus orci ac auctor augue. Gravida quis blandit turpis cursus in. Pharetra vel turpis nunc eget lorem. Sit amet cursus sit amet dictum sit amet justo. Ipsum consequat nisl vel pretium lectus quam. At in tellus integer feugiat scelerisque varius morbi. Risus nec feugiat in fermentum. In ante metus dictum at tempor commodo ullamcorper a lacus. Id neque aliquam vestibulum morbi blandit cursus risus at. Elementum pulvinar etiam non quam lacus suspendisse faucibus interdum posuere. Integer feugiat scelerisque varius morbi enim nunc faucibus a pellentesque. Sit amet cursus sit amet. Cursus mattis molestie a iaculis at erat pellentesque. Sed sed risus pretium quam vulputate dignissim suspendisse. Eu feugiat pretium nibh ipsum consequat nisl vel pretium.
 
 Quis auctor elit sed vulputate mi sit amet mauris commodo. Tempus urna et pharetra pharetra massa massa ultricies mi. Lobortis elementum nibh tellus molestie nunc non. Pellentesque eu tincidunt tortor aliquam nulla. Amet mattis vulputate enim nulla aliquet. Volutpat commodo sed egestas egestas fringilla phasellus faucibus. Orci sagittis eu volutpat odio facilisis mauris sit amet. Id ornare arcu odio ut sem nulla pharetra. Iaculis nunc sed augue lacus viverra vitae congue. Tincidunt eget nullam non nisi est sit.
