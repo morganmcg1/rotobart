@@ -1,3 +1,4 @@
+export USE_TORCH=False
 python3 -m venv jax_env
 source ~/jax_env/bin/activate
 pip install --upgrade pip

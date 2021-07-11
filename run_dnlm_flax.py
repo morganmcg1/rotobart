@@ -237,10 +237,12 @@ def advance_iter_and_group_samples(train_iterator, num_samples, max_seq_length):
     i = 0
     while i < num_total_tokens:
         tokenized_samples = next(train_iterator)
-        i += len(tokenized_samples["input_ids"])
+        tokenized_samples['input_ids'] = tokenized_samples['input_ids'].tolist()
+        tokenized_samples['labels'] = tokenized_samples['labels'].tolist()
 
+        i += len(tokenized_samples["input_ids"][0])
         # concatenate tokenized samples to list
-        samples = {k: samples[k] + tokenized_samples[k] for k in tokenized_samples.keys()}
+        samples = {k: samples[k] + tokenized_samples[k][0] for k in tokenized_samples.keys()}
 
     # Concatenated tokens are split to lists of length `max_seq_length`.
     # Note that remainedr of % max_seq_length are thrown away.
@@ -408,12 +410,13 @@ if __name__ == "__main__":
     text_column_name = "text" 
 
     def tokenize_function(examples):
-        return tokenizer(examples[text_column_name], 
+        t = tokenizer(examples[text_column_name], 
           return_attention_mask=False,
           truncation=True,
           max_length=max_seq_length,
           padding='max_length'
           )
+        return t
 
     tokenized_train_dataset = sent_tokenized_train_dataset.map(
         tokenize_function,
@@ -603,8 +606,8 @@ if __name__ == "__main__":
     train_metrics = []
     eval_metrics = []
 
-    training_iter = BackgroundGenerator(iter(tokenized_train_dataset), max_prefetch=50_000)
-    eval_iter = BackgroundGenerator(iter(tokenized_eval_dataset), max_prefetch=50_000)
+    training_iter = BackgroundGenerator(iter(tokenized_train_dataset), max_prefetch=128)
+    eval_iter = BackgroundGenerator(iter(tokenized_eval_dataset), max_prefetch=128)
 
     def data_collator(examples):
       batch = tokenizer.pad(examples, return_tensors=TensorType.NUMPY)

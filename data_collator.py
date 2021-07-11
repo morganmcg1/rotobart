@@ -146,7 +146,7 @@ class DataCollatorForTextInfilling:
             new_inputs[i, 0:new_example.shape[0]] = new_example
             
         #batching now fixed
-        return new_inputs.tolist(), labels.tolist()
+        return new_inputs, labels
 
 
 #Code below is by Matt Bui
