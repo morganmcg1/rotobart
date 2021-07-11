@@ -326,24 +326,49 @@ if __name__ == "__main__":
 
     # Set seed before initializing model.
     set_seed(training_args.seed)
+    wikitext=(data_args.dataset_path == 'wikitext')
+    if not wikitext:
+        # Load Datasets
+        # Train Dataset - Stream The Pile dataset
+        print('Loading train data')
+        train_dataset = load_dataset(
+        data_args.dataset_path, 
+        split="train",
+        cache_dir=model_args.cache_dir,
+        streaming=True)
 
-    # Load Datasets
-    # Train Dataset - Stream The Pile dataset
-    print('Loading train data')
-    train_dataset = load_dataset(
-      data_args.dataset_path, 
-      split="train",
-      cache_dir=model_args.cache_dir,
-      streaming=True)
+        print('Loading eval data')
+        # Test Dataset - Stream The Pile dataset
 
-    print('Loading eval data')
-    # Test Dataset - Stream The Pile dataset
-    eval_dataset = load_dataset(
-      data_args.dataset_path, 
-      split="validation",
-      streaming=True,
-      cache_dir=model_args.cache_dir,
-    )
+            
+        eval_dataset = load_dataset(
+        data_args.dataset_path, 
+        split="validation",
+        streaming=True,
+        cache_dir=model_args.cache_dir,
+        )
+    else:
+        # Load Datasets
+        # Train Dataset - Stream The Pile dataset
+        print('Loading train data')
+        train_dataset = load_dataset(
+        data_args.dataset_path,
+        'wikitext-103-raw-v1', 
+        split="train",
+        cache_dir=model_args.cache_dir,
+        streaming=True)
+
+        print('Loading eval data')
+        # Test Dataset - Stream The Pile dataset
+
+            
+        eval_dataset = load_dataset(
+        data_args.dataset_path,
+        'wikitext-103-raw-v1',
+        split="validation",
+        streaming=True,
+        cache_dir=model_args.cache_dir,
+        )
 
     # Shuffle the training dataset
     shuffled_train_dataset = train_dataset.shuffle(
