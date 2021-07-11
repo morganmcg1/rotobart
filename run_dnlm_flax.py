@@ -533,6 +533,7 @@ if __name__ == "__main__":
         # For more details about the parameters please check https://github.com/deepmind/optax/blob/ed02befef9bf81cbbf236be3d2b0e032e9ed4a40/optax/_src/alias.py#L74
         optimizer = optax.adafactor(
             learning_rate=linear_decay_lr_schedule_fn,
+            weight_decay_rate=training_args.weight_decay,
         )
     else:
         optimizer = optax.adamw(
@@ -543,9 +544,15 @@ if __name__ == "__main__":
             weight_decay=training_args.weight_decay,
             mask=decay_mask_fn,
         )
-
+    clip=1.0
+    grad_accum=4
+    my_optimizer = optax.chain(
+        optax.clip_by_global_norm(clip),
+        optimizer,
+        optax.apply_every(grad_accum),
+    )
     # Setup train state
-    state = train_state.TrainState.create(apply_fn=model.__call__, params=model.params, tx=optimizer)
+    state = train_state.TrainState.create(apply_fn=model.__call__, params=model.params, tx=my_optimizer)
 
     def loss_fn(logits, labels):
         shift_logits = logits[..., :-1, :]
@@ -643,6 +650,7 @@ if __name__ == "__main__":
         # Model forward
         model_inputs = shard(model_inputs.data)
         # model_inputs = shard(samples.data)
+
         state, train_metric, dropout_rngs = p_train_step(state, model_inputs, dropout_rngs)
 
         train_metrics.append(train_metric)
@@ -688,7 +696,7 @@ if __name__ == "__main__":
             if jax.process_index() == 0 and training_args.save_strategy=="epoch":
                 params = jax.device_get(jax.tree_map(lambda x: x[0], state.params))
                 model.save_pretrained(
-                    training_args.output_dir,
+                    training_args.outfput_dir,
                     params=params,
                     push_to_hub=training_args.push_to_hub,
                     commit_message=f"Saving weights and logs of step {step+1}",
