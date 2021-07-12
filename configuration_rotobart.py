@@ -18,7 +18,6 @@ import warnings
 from transformers.configuration_utils import PretrainedConfig
 from transformers.utils import logging
 
-
 logger = logging.get_logger(__name__)
 
 RotoBART_PRETRAINED_CONFIG_ARCHIVE_MAP = {
@@ -136,7 +135,7 @@ class RotoBARTConfig(PretrainedConfig):
         is_encoder_decoder=True,
         decoder_start_token_id=2,
         forced_eos_token_id=2,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             num_labels=num_labels,

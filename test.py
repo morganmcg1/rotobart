@@ -1,17 +1,15 @@
-from modeling_flax_rotobart import *
-from configuration_rotobart import *
 from transformers import BartTokenizer
-from data_collator import DataCollatorForTextInfilling
 
-config = RotoBARTConfig(encoder_layers=2, \
-    encoder_ffn_dim=256, decoder_layers=2, decoder_ffn_dim=256)
+from configuration_rotobart import *
+from data_collator import DataCollatorForTextInfilling
+from modeling_flax_rotobart import *
+
+config = RotoBARTConfig(encoder_layers=2, encoder_ffn_dim=256, decoder_layers=2, decoder_ffn_dim=256)
 
 model = FlaxRotoBARTModel(config=config)
-tokenizer = BartTokenizer.from_pretrained('facebook/bart-large-cnn')
-special_tokens_dict = {'additional_special_tokens': ['[MASK]']}
+tokenizer = BartTokenizer.from_pretrained("facebook/bart-large-cnn")
+special_tokens_dict = {"additional_special_tokens": ["[MASK]"]}
 tokenizer.add_special_tokens(special_tokens_dict)
-
-
 
 
 lorem_ispum = """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Nec feugiat nisl pretium fusce id. Odio ut enim blandit volutpat maecenas volutpat. Tincidunt dui ut ornare lectus sit amet est placerat. Non tellus orci ac auctor augue. Gravida quis blandit turpis cursus in. Pharetra vel turpis nunc eget lorem. Sit amet cursus sit amet dictum sit amet justo. Ipsum consequat nisl vel pretium lectus quam. At in tellus integer feugiat scelerisque varius morbi. Risus nec feugiat in fermentum. In ante metus dictum at tempor commodo ullamcorper a lacus. Id neque aliquam vestibulum morbi blandit cursus risus at. Elementum pulvinar etiam non quam lacus suspendisse faucibus interdum posuere. Integer feugiat scelerisque varius morbi enim nunc faucibus a pellentesque. Sit amet cursus sit amet. Cursus mattis molestie a iaculis at erat pellentesque. Sed sed risus pretium quam vulputate dignissim suspendisse. Eu feugiat pretium nibh ipsum consequat nisl vel pretium.
@@ -22,11 +20,10 @@ Molestie ac feugiat sed lectus vestibulum mattis. Ut sem nulla pharetra diam sit
 """
 print("JAX")
 inputs = tokenizer(lorem_ispum, max_length=1024, padding=True, truncation=True, return_tensors="np")
-#print(inputs)
-#collator = DataCollatorForTextInfilling(tokenizer)
+# print(inputs)
+# collator = DataCollatorForTextInfilling(tokenizer)
 
-#print(collator(inputs))
+# print(collator(inputs))
 
-#print(inputs)
 print(inputs)
 model.encode(**inputs)
