@@ -226,18 +226,19 @@ class DataCollatorForDenoisingTasks:
     mask_ratio: float = 0.3
     poisson_lambda: float = 3.0
     permutate_sentence_ratio: float = 1.0
+    pad_to_multiple_of: int = 16
 
     def __post_init__(self):
         if self.tokenizer.mask_token is None or self.tokenizer.eos_token is None:
             raise ValueError
 
-    def __call__(self, examples: List[Dict[str, List[int]]], pad_to_multiple_of: int) -> Dict[str, np.ndarray]:
+    def __call__(self, examples: List[Dict[str, List[int]]]) -> Dict[str, np.ndarray]:
         """Batching, adding whole word mask and permutate sentences
         Args:
             examples (dict): list of examples each examples contains input_ids field
         """
         # Handle dict or lists with proper padding and conversion to tensor.
-        batch = self.tokenizer.pad(examples, pad_to_multiple_of=pad_to_multiple_of, return_tensors="np")
+        batch = self.tokenizer.pad(examples, pad_to_multiple_of=self.pad_to_multiple_of, return_tensors="np")
         batch["decoder_input_ids"] = self.shift_tokens_right(batch["input_ids"])
 
         do_permutate = False
