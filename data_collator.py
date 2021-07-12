@@ -202,7 +202,7 @@ class DataCollatorForSentencePermutation:
 
 
 @dataclass
-class DenoisingDataCollator:
+class DataCollatorForDenoisingTasks:
     """Data collator used denoising language modeling task in BART.
     The implementation is based on
     https://github.com/pytorch/fairseq/blob/1bba712622b8ae4efb3eb793a8a40da386fe11d0/fairseq/data/denoising_dataset.py.
