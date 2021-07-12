@@ -1,14 +1,14 @@
-from modeling_flax_rotobart import *
-from configuration_rotobart import *
 from transformers import BartTokenizer
+
+from configuration_rotobart import *
 from data_collator import DataCollatorForTextInfilling
+from modeling_flax_rotobart import *
 
-config = RotoBARTConfig(encoder_layers=2, \
-    encoder_ffn_dim=256, decoder_layers=2, decoder_ffn_dim=256)
+config = RotoBARTConfig(encoder_layers=2, encoder_ffn_dim=256, decoder_layers=2, decoder_ffn_dim=256)
 
-#model = FlaxRotoBARTModel(config=config)
-tokenizer = BartTokenizer.from_pretrained('facebook/bart-large-cnn')
-special_tokens_dict = {'additional_special_tokens': ['[MASK]']}
+# model = FlaxRotoBARTModel(config=config)
+tokenizer = BartTokenizer.from_pretrained("facebook/bart-large-cnn")
+special_tokens_dict = {"additional_special_tokens": ["[MASK]"]}
 tokenizer.add_special_tokens(special_tokens_dict)
 
 
@@ -25,5 +25,5 @@ collator = DataCollatorForTextInfilling(tokenizer)
 
 print(collator(inputs))
 
-#print(inputs)
-#model.encode(**inputs)
+# print(inputs)
+# model.encode(**inputs)

@@ -16,53 +16,46 @@
 
 
 # You can also adapt this script on your own masked language modeling task. Pointers for this are left as comments.
-import logging
 import os
 import sys
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
-import numpy as np
-from datasets import load_dataset
-from tqdm import tqdm
-import nltk
-
-import flax
 import jax
 import jax.numpy as jnp
+import numpy as np
 import optax
+from datasets import load_dataset
 from flax import jax_utils, traverse_util
 from flax.training import train_state
 from flax.training.common_utils import get_metrics, onehot, shard
-from transformers import (
-    CONFIG_MAPPING,
-    FLAX_MODEL_FOR_MASKED_LM_MAPPING,
-    BatchEncoding,
-    HfArgumentParser,
-    PreTrainedTokenizerBase,
-    #BartTokenizerFast,
+from prefetch_generator import BackgroundGenerator
+from tqdm import tqdm
+from transformers import (  # BartTokenizerFast,; BartTokenizer,; BatchEncoding,; CONFIG_MAPPING,; FLAX_MODEL_FOR_MASKED_LM_MAPPING,; PreTrainedTokenizerBase,
     DebertaV2Tokenizer,
-    TensorType,
-    TrainingArguments,
+    HfArgumentParser,
     is_tensorboard_available,
     set_seed,
+    TensorType,
+    TrainingArguments,
 )
-from prefetch_generator import BackgroundGenerator
 
-## TODO: import from rotobart file
-#from transformers.models.bart.configuration_bart import shift_tokens_right
+from configuration_rotobart import *
+from data_collator import DataCollatorForSentencePermutation, DataCollatorForTextInfilling, SentenceTokenize
 
 # RotoBART imports
 from modeling_flax_rotobart import *
-from configuration_rotobart import *
-from transformers import BartTokenizer
-from data_collator import DataCollatorForSentencePermutation, DataCollatorForTextInfilling, SentenceTokenize
+
+## TODO: import from rotobart file
+# from transformers.models.bart.configuration_bart import shift_tokens_right
+
 
 # MODEL_CONFIG_CLASSES = list(FLAX_MODEL_FOR_MASKED_LM_MAPPING.keys())
 # MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
+
 
 @dataclass
 class ModelArguments:
@@ -102,43 +95,27 @@ class ModelArguments:
     )
     encoder_layers: Optional[int] = field(
         default=2,
-        metadata={
-            "help": "Number of encoder layers"
-        },
+        metadata={"help": "Number of encoder layers"},
     )
     decoder_layers: Optional[int] = field(
         default=2,
-        metadata={
-            "help": "Number of decoder layers"
-        },
+        metadata={"help": "Number of decoder layers"},
     )
     encoder_ffn_dim: Optional[int] = field(
         default=256,
-        metadata={
-            "help": "Dimension of encoder feedforward network"
-        },
+        metadata={"help": "Dimension of encoder feedforward network"},
     )
     decoder_ffn_dim: Optional[int] = field(
         default=256,
-        metadata={
-            "help": "Dimension of decoder feedforward network"
-        },
+        metadata={"help": "Dimension of decoder feedforward network"},
     )
-    decoder_ffn_dim: Optional[int] = field(default=256,
-        metadata={"help": "Dimension of decoder feedforward network"})
-    d_model: Optional[int] = field(default=1024,
-        metadata={"help": "Dimension of model"})
-    vocab_size: Optional[int] = field(default=128100,
-        metadata={"help": "Vocab size"})
-    max_position_embeddings: Optional[int] = field(default=1024,
-        metadata={"help": "Max position embeddings"})
-    encoder_layerdrop: Optional[float] = field(default=0.0,
-        metadata={"help": "Max position embeddings"})
-    decoder_layerdrop: Optional[float] = field(default=0.0,
-        metadata={"help": "Max position embeddings"})
-    use_bf16: bool = field(
-      default=False, metadata={"help": "Train in bf16 or not"}
-    )
+    decoder_ffn_dim: Optional[int] = field(default=256, metadata={"help": "Dimension of decoder feedforward network"})
+    d_model: Optional[int] = field(default=1024, metadata={"help": "Dimension of model"})
+    vocab_size: Optional[int] = field(default=128100, metadata={"help": "Vocab size"})
+    max_position_embeddings: Optional[int] = field(default=1024, metadata={"help": "Max position embeddings"})
+    encoder_layerdrop: Optional[float] = field(default=0.0, metadata={"help": "Max position embeddings"})
+    decoder_layerdrop: Optional[float] = field(default=0.0, metadata={"help": "Max position embeddings"})
+    use_bf16: bool = field(default=False, metadata={"help": "Train in bf16 or not"})
 
 
 @dataclass
@@ -150,9 +127,7 @@ class DataTrainingArguments:
     dataset_name: Optional[str] = field(
         default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."}
     )
-    dataset_path: Optional[str] = field(
-        default="./pile.py", metadata={"help": "Path to custom dataset file."}
-    )
+    dataset_path: Optional[str] = field(default="./pile.py", metadata={"help": "Path to custom dataset file."})
     dataset_config_name: Optional[str] = field(
         default=None, metadata={"help": "The configuration name of the dataset to use (via the datasets library)."}
     )
@@ -169,14 +144,10 @@ class DataTrainingArguments:
         default=None,
         metadata={"help": "An optional input validation ref data file for whole word masking in Chinese."},
     )
-    overwrite_cache: bool = field(
-        default=False, metadata={"help": "Overwrite the cached training and evaluation sets"}
-    )
+    overwrite_cache: bool = field(default=False, metadata={"help": "Overwrite the cached training and evaluation sets"})
     validation_split_percentage: Optional[int] = field(
         default=5,
-        metadata={
-            "help": "The percentage of the train set used as validation set in case there's no validation split"
-        },
+        metadata={"help": "The percentage of the train set used as validation set in case there's no validation split"},
     )
     max_seq_length: Optional[int] = field(
         default=None,
@@ -198,21 +169,11 @@ class DataTrainingArguments:
     shuffle_buffer_size: int = field(
         default=10000, metadata={"help": "The number of examples to pre-load for shuffling."}
     )
-    num_train_steps: int = field(
-      default=50000, metadata={"help": "The number of training steps."}
-    )
-    num_eval_samples: int = field(
-      default=50000, metadata={"help": "The number of samples to be used for evaluation"}
-    )
-    use_wandb: bool = field(
-      default=False, metadata={"help": "Use Weights & Biases for experiment tracking"}
-    )
-    testing: bool = field(
-      default=False, metadata={"help": "If testing, only 1 train batch will be used"}
-    )
-    colab_tpu: bool = field(
-      default=False, metadata={"help": "Whether you are training on a colab TPU"}
-    )
+    num_train_steps: int = field(default=50000, metadata={"help": "The number of training steps."})
+    num_eval_samples: int = field(default=50000, metadata={"help": "The number of samples to be used for evaluation"})
+    use_wandb: bool = field(default=False, metadata={"help": "Use Weights & Biases for experiment tracking"})
+    testing: bool = field(default=False, metadata={"help": "If testing, only 1 train batch will be used"})
+    colab_tpu: bool = field(default=False, metadata={"help": "Whether you are training on a colab TPU"})
 
 
 def generate_batch_splits(samples_idx: jnp.ndarray, batch_size: int) -> jnp.ndarray:
@@ -300,10 +261,11 @@ if __name__ == "__main__":
 
     # Setup Colab TPU
     if data_args.colab_tpu:
-      print("Setting up colab TPU")
-      import jax.tools.colab_tpu
-      jax.tools.colab_tpu.setup_tpu()
-      print(f"Colab TPU setup complete, jax.device_count: {jax.device_count()}")
+        print("Setting up colab TPU")
+        import jax.tools.colab_tpu
+
+        jax.tools.colab_tpu.setup_tpu()
+        print(f"Colab TPU setup complete, jax.device_count: {jax.device_count()}")
 
     # TODO: Fix logger
     # # Setup logging
@@ -322,45 +284,34 @@ if __name__ == "__main__":
     # )
 
     # Set the verbosity to info of the Transformers logger (on main process only):
-    #logger.info(f"Training/evaluation parameters {training_args}")
+    # logger.info(f"Training/evaluation parameters {training_args}")
 
     # Set seed before initializing model.
     set_seed(training_args.seed)
 
     # Load Datasets
     # Train Dataset - Stream The Pile dataset
-    print('Loading train data')
-    train_dataset = load_dataset(
-      data_args.dataset_path, 
-      split="train",
-      cache_dir=model_args.cache_dir,
-      streaming=True)
+    print("Loading train data")
+    train_dataset = load_dataset(data_args.dataset_path, split="train", cache_dir=model_args.cache_dir, streaming=True)
 
-    print('Loading eval data')
+    print("Loading eval data")
     # Test Dataset - Stream The Pile dataset
     eval_dataset = load_dataset(
-      data_args.dataset_path, 
-      split="validation",
-      streaming=True,
-      cache_dir=model_args.cache_dir,
+        data_args.dataset_path,
+        split="validation",
+        streaming=True,
+        cache_dir=model_args.cache_dir,
     )
 
     # Shuffle the training dataset
-    shuffled_train_dataset = train_dataset.shuffle(
-      buffer_size=data_args.shuffle_buffer_size,
-      seed=training_args.seed
-    )
+    shuffled_train_dataset = train_dataset.shuffle(buffer_size=data_args.shuffle_buffer_size, seed=training_args.seed)
 
     # Sentence Tokenization
     # Used for Sentence Permutation
     sent_tok = SentenceTokenize()
     # Batching is not yet supported. Not sure if necessary?
-    sent_tokenized_train_dataset = shuffled_train_dataset.map(
-        sent_tok
-    )
-    sent_tokenized_eval_dataset = eval_dataset.map(
-        sent_tok
-    ) 
+    sent_tokenized_train_dataset = shuffled_train_dataset.map(sent_tok)
+    sent_tokenized_eval_dataset = eval_dataset.map(sent_tok)
 
     # Do Tokenization
     # Load tokenizer
@@ -369,37 +320,41 @@ if __name__ == "__main__":
     # )
 
     tokenizer = DebertaV2Tokenizer.from_pretrained(
-      model_args.tokenizer_name, 
-      unk_token="<unk>",
-      sep_token="<sep>",
-      pad_token="<pad>",
-      cls_token="",
-      mask_token="<mask>",
-      eos_token="<s>",
-      bos_token="</s>"
+        model_args.tokenizer_name,
+        unk_token="<unk>",
+        sep_token="<sep>",
+        pad_token="<pad>",
+        cls_token="",
+        mask_token="<mask>",
+        eos_token="<s>",
+        bos_token="</s>",
     )
 
     max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
-    text_column_name = "text" 
+    text_column_name = "text"
 
     def tokenize_function(examples):
-        return tokenizer(examples[text_column_name], 
-          return_attention_mask=False,
-          truncation=True,
-          max_length=max_seq_length,
-          padding='max_length'
-          )
+        return tokenizer(
+            examples[text_column_name],
+            truncation=True,
+            max_length=max_seq_length,
+            padding="max_length",
+        )
 
     tokenized_train_dataset = sent_tokenized_train_dataset.map(
         tokenize_function,
-        batched=True
+        num_proc=data_args.preprocessing_num_workers,
+        batched=True,
+        remove_columns=sent_tokenized_train_dataset.column_names,
     )
 
     tokenized_eval_dataset = sent_tokenized_eval_dataset.map(
         tokenize_function,
-        batched=True
+        num_proc=data_args.preprocessing_num_workers,
+        batched=True,
+        remove_columns=sent_tokenized_eval_dataset.columns_names,
     )
-    
+
     # Do Sentence Permutation
     permute_sent = DataCollatorForSentencePermutation(tokenizer)
     tokenized_train_dataset = tokenized_train_dataset.map(permute_sent)
@@ -410,15 +365,14 @@ if __name__ == "__main__":
     tokenized_train_dataset = tokenized_train_dataset.map(masking_collator)
     tokenized_eval_dataset = tokenized_eval_dataset.map(masking_collator)
 
-    print("Collate deployed successfully.")
-
-    # Log to Weights and Biases 
+    # Log to Weights and Biases
     if data_args.use_wandb and jax.process_index() == 0:
-      import wandb
-      wandb.init(entity='wandb', project='hf-flax-rotobart', sync_tensorboard=True)
-      wandb.config.update(training_args)  # optional, log your configs
-      wandb.config.update(model_args)  # optional, log your configs
-      wandb.config.update(data_args)   # optional, log your configs
+        import wandb
+
+        wandb.init(entity="wandb", project="hf-flax-rotobart", sync_tensorboard=True)
+        wandb.config.update(training_args)  # optional, log your configs
+        wandb.config.update(model_args)  # optional, log your configs
+        wandb.config.update(data_args)  # optional, log your configs
 
     # Enable tensorboard only on the master node
     has_tensorboard = is_tensorboard_available()
@@ -445,25 +399,29 @@ if __name__ == "__main__":
     # Load Model
     # TODO: Leverage AutoConfig
     config = RotoBARTConfig(
-      encoder_layers=model_args.encoder_layers,
-      encoder_ffn_dim=model_args.encoder_ffn_dim, 
-      decoder_layers=model_args.decoder_layers, 
-      decoder_ffn_dim=model_args.decoder_ffn_dim,
-      d_model=model_args.d_model,
-      vocab_size=model_args.vocab_size,
-      max_position_embeddings=model_args.max_position_embeddings,
-      encoder_layerdrop=model_args.encoder_layerdrop,
-      decoder_layerdrop=model_args.decoder_layerdrop,
+        encoder_layers=model_args.encoder_layers,
+        encoder_ffn_dim=model_args.encoder_ffn_dim,
+        decoder_layers=model_args.decoder_layers,
+        decoder_ffn_dim=model_args.decoder_ffn_dim,
+        d_model=model_args.d_model,
+        vocab_size=model_args.vocab_size,
+        max_position_embeddings=model_args.max_position_embeddings,
+        encoder_layerdrop=model_args.encoder_layerdrop,
+        decoder_layerdrop=model_args.decoder_layerdrop,
     )
 
     # TODO: Load model from config
-    #model = FlaxAutoModelForMaskedLM.from_config(config, seed=training_args.seed, dtype=getattr(jnp, model_args.dtype))
-    model = FlaxRotoBARTForConditionalGeneration(config=config, seed=training_args.seed, dtype=getattr(jnp, model_args.dtype))
-    
+    # model = FlaxAutoModelForMaskedLM.from_config(config, seed=training_args.seed, dtype=getattr(jnp, model_args.dtype))
+    model = FlaxRotoBARTForConditionalGeneration(
+        config=config, seed=training_args.seed, dtype=getattr(jnp, model_args.dtype)
+    )
+
     # Convert model to bf16
     if model_args.use_bf16:
+
         def to_bf16(t):
             return jax.tree_map(lambda x: x.astype(jnp.bfloat16) if x.dtype == jnp.float32 else x, t)
+
         model.params = to_bf16(model.params)
 
     # Store some constant
@@ -507,7 +465,7 @@ if __name__ == "__main__":
             learning_rate=linear_decay_lr_schedule_fn,
         )
     else:
-        adamw = optax.adamw(
+        optimizer = optax.adamw(
             learning_rate=linear_decay_lr_schedule_fn,
             b1=training_args.adam_beta1,
             b2=training_args.adam_beta2,
@@ -517,7 +475,7 @@ if __name__ == "__main__":
         )
 
     # Setup train state
-    state = train_state.TrainState.create(apply_fn=model.__call__, params=model.params, tx=adamw)
+    state = train_state.TrainState.create(apply_fn=model.__call__, params=model.params, tx=optimizer)
 
     def loss_fn(logits, labels):
         shift_logits = logits[..., :-1, :]
@@ -582,28 +540,24 @@ if __name__ == "__main__":
     eval_iter = BackgroundGenerator(iter(tokenized_eval_dataset), max_prefetch=50_000)
 
     def data_collator(examples):
-      batch = tokenizer.pad(examples, return_tensors=TensorType.NUMPY)
-      # print(batch['input_ids'].shape)
-      return batch
+        batch = tokenizer.pad(examples, return_tensors=TensorType.NUMPY)
+        return batch
 
-    print(f'Getting {data_args.num_eval_samples} eval samples')
+    print(f"Getting {data_args.num_eval_samples} eval samples")
     max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
     eval_samples = advance_iter_and_group_samples(eval_iter, data_args.num_eval_samples, max_seq_length)
 
-    print('Start training')
+    print("Start training")
     steps = tqdm(range(num_train_steps), desc="Training...", position=0)
     for step in range(num_train_steps):
         # ======================== Training ================================
         try:
             if (data_args.testing and step == 0) or not data_args.testing:
-              samples = advance_iter_and_group_samples(training_iter, train_batch_size, max_seq_length)
-            
+                samples = advance_iter_and_group_samples(training_iter, train_batch_size, max_seq_length)
+
         except StopIteration:
             # Once the end of the dataset stream is reached, the training iterator
             # is reinitialized and reshuffled and a new eval dataset is randomely chosen.
-            shuffle_seed += 1
-            tokenized_datasets.set_epoch(shuffle_seed)
-
             training_iter = BackgroundGenerator(iter(tokenized_train_dataset), max_prefetch=50_000)
 
             eval_dataset = advance_iter_and_group_samples(eval_iter, data_args.num_eval_samples, max_seq_length)
@@ -657,7 +611,7 @@ if __name__ == "__main__":
             eval_metrics = []
 
             # save checkpoint after each epoch and push checkpoint to the hub
-            if jax.process_index() == 0 and training_args.save_strategy=="epoch":
+            if jax.process_index() == 0 and training_args.save_strategy == "epoch":
                 params = jax.device_get(jax.tree_map(lambda x: x[0], state.params))
                 model.save_pretrained(
                     training_args.output_dir,
@@ -666,15 +620,14 @@ if __name__ == "__main__":
                     commit_message=f"Saving weights and logs of step {step+1}",
                 )
 
-
         # save checkpoint on steps and push checkpoint to the hub
-        if (training_args.save_steps % (step+1)) == 0 and training_args.save_strategy=="steps":
+        if (training_args.save_steps % (step + 1)) == 0 and training_args.save_strategy == "steps":
             params = jax.device_get(jax.tree_map(lambda x: x[0], state.params))
             model.save_pretrained(
                 training_args.output_dir,
                 params=params,
                 push_to_hub=training_args.push_to_hub,
-                commit_message=f"Saving weights and logs of step {step+1}"
+                commit_message=f"Saving weights and logs of step {step+1}",
             )
 
         # update tqdm bar
