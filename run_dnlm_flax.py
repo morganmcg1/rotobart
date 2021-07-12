@@ -32,19 +32,18 @@ from datasets import load_dataset
 from flax import jax_utils, traverse_util
 from flax.training import train_state
 from flax.training.common_utils import get_metrics, onehot, shard
-from prefetch_generator import BackgroundGenerator
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import (  # BartTokenizerFast,; BartTokenizer,; BatchEncoding,; CONFIG_MAPPING,; FLAX_MODEL_FOR_MASKED_LM_MAPPING,; PreTrainedTokenizerBase,
     DebertaV2Tokenizer,
     HfArgumentParser,
     is_tensorboard_available,
     set_seed,
-    TensorType,
     TrainingArguments,
 )
 
 from configuration_rotobart import *
-from data_collator import DataCollatorForSentencePermutation, DataCollatorForTextInfilling, SentenceTokenize
+from data_collator import DataCollatorForDenoisingTasks, SentenceTokenize
 
 # RotoBART imports
 from modeling_flax_rotobart import *
@@ -335,8 +334,8 @@ if __name__ == "__main__":
     # Used for Sentence Permutation
     sent_tok = SentenceTokenize()
     # Batching is not yet supported. Not sure if necessary?
-    sent_tokenized_train_dataset = shuffled_train_dataset.map(sent_tok)
-    sent_tokenized_eval_dataset = eval_dataset.map(sent_tok)
+    sent_tokenized_train_dataset = shuffled_train_dataset.map(sent_tok, batched=True, batch_size=1)
+    sent_tokenized_eval_dataset = eval_dataset.map(sent_tok, batched=True, batch_size=1)
 
     # Do Tokenization
     # Load tokenizer
@@ -347,12 +346,12 @@ if __name__ == "__main__":
     tokenizer = DebertaV2Tokenizer.from_pretrained(
         model_args.tokenizer_name,
         unk_token="<unk>",
-        sep_token="<sep>",
+        sep_token="</s>",
         pad_token="<pad>",
-        cls_token="",
+        cls_token="<s>",
         mask_token="<mask>",
-        eos_token="<s>",
-        bos_token="</s>",
+        eos_token="</s>",
+        bos_token="<s>",
     )
 
     max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
@@ -366,29 +365,9 @@ if __name__ == "__main__":
             padding="max_length",
         )
 
-    tokenized_train_dataset = sent_tokenized_train_dataset.map(
-        tokenize_function,
-        num_proc=data_args.preprocessing_num_workers,
-        batched=True,
-        remove_columns=sent_tokenized_train_dataset.column_names,
-    )
+    tokenized_train_dataset = sent_tokenized_train_dataset.map(tokenize_function, batched=True, batch_size=1)
 
-    tokenized_eval_dataset = sent_tokenized_eval_dataset.map(
-        tokenize_function,
-        num_proc=data_args.preprocessing_num_workers,
-        batched=True,
-        remove_columns=sent_tokenized_eval_dataset.columns_names,
-    )
-
-    # Do Sentence Permutation
-    permute_sent = DataCollatorForSentencePermutation(tokenizer)
-    tokenized_train_dataset = tokenized_train_dataset.map(permute_sent)
-    tokenized_eval_dataset = tokenized_eval_dataset.map(permute_sent)
-
-    # Do Text Infilling
-    masking_collator = DataCollatorForTextInfilling(tokenizer)
-    tokenized_train_dataset = tokenized_train_dataset.map(masking_collator)
-    tokenized_eval_dataset = tokenized_eval_dataset.map(masking_collator)
+    tokenized_eval_dataset = sent_tokenized_eval_dataset.map(tokenize_function, batched=True, batch_size=1)
 
     # Log to Weights and Biases
     if data_args.use_wandb and jax.process_index() == 0:
@@ -485,7 +464,8 @@ if __name__ == "__main__":
     # create optimizer
     if training_args.adafactor:
         # We use the default parameters here to initialize adafactor,
-        # For more details about the parameters please check https://github.com/deepmind/optax/blob/ed02befef9bf81cbbf236be3d2b0e032e9ed4a40/optax/_src/alias.py#L74
+        # For more details about the parameters please check
+        # https://github.com/deepmind/optax/blob/ed02befef9bf81cbbf236be3d2b0e032e9ed4a40/optax/_src/alias.py#L74
         optimizer = optax.adafactor(
             learning_rate=linear_decay_lr_schedule_fn,
             weight_decay_rate=training_args.weight_decay,
@@ -567,12 +547,23 @@ if __name__ == "__main__":
     train_metrics = []
     eval_metrics = []
 
-    training_iter = BackgroundGenerator(iter(tokenized_train_dataset), max_prefetch=128)
-    eval_iter = BackgroundGenerator(iter(tokenized_eval_dataset), max_prefetch=128)
-
-    def data_collator(examples):
-        batch = tokenizer.pad(examples, return_tensors=TensorType.NUMPY)
-        return batch
+    data_collator = DataCollatorForDenoisingTasks(tokenizer)
+    training_iter = iter(
+        DataLoader(
+            tokenized_train_dataset.with_format("torch"),
+            batch_size=train_batch_size,
+            num_workers=data_args.preprocessing_num_workers,
+            prefetch_factor=10,
+        )
+    )
+    eval_iter = iter(
+        DataLoader(
+            tokenized_eval_dataset.with_format("torch"),
+            batch_size=train_batch_size,
+            num_workers=data_args.preprocessing_num_workers,
+            prefetch_factor=10,
+        )
+    )
 
     print(f"Getting {data_args.num_eval_samples} eval samples")
     max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
@@ -582,20 +573,7 @@ if __name__ == "__main__":
     steps = tqdm(range(num_train_steps), desc="Training...", position=0)
     for step in range(num_train_steps):
         # ======================== Training ================================
-        try:
-            if (data_args.testing and step == 0) or not data_args.testing:
-                samples = advance_iter_and_group_samples(training_iter, train_batch_size, max_seq_length)
-
-        except StopIteration:
-            # Once the end of the dataset stream is reached, the training iterator
-            # is reinitialized and reshuffled and a new eval dataset is randomely chosen.
-            training_iter = BackgroundGenerator(iter(tokenized_train_dataset), max_prefetch=50_000)
-
-            eval_dataset = advance_iter_and_group_samples(eval_iter, data_args.num_eval_samples, max_seq_length)
-            samples = advance_iter_and_group_samples(training_iter, train_batch_size, max_seq_length)
-
-        # process input samples
-        model_inputs = data_collator(samples)
+        model_inputs = next(training_iter)
 
         # Model forward
         model_inputs = shard(model_inputs.data)
