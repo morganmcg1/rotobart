@@ -554,7 +554,7 @@ if __name__ == "__main__":
     # Setup train state
     state = train_state.TrainState.create(apply_fn=model.__call__, params=model.params, tx=my_optimizer)
     
-    Print("Number of Parameters: ", sum(p.size for p in jax.tree_leaves(model.params)))
+    print("Number of Parameters: ", sum(p.size for p in jax.tree_leaves(model.params)))
     
     def loss_fn(logits, labels):
         shift_logits = logits[..., :-1, :]
