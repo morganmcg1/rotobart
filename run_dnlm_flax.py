@@ -107,26 +107,16 @@ class ModelArguments:
     )
     decoder_ffn_dim: Optional[int] = field(
         default=256,
-        metadata={
-            "help": "Dimension of decoder feedforward network"
-        },
+        metadata={"help": "Dimension of decoder feedforward network"},
     )
-    decoder_ffn_dim: Optional[int] = field(default=256,
-        metadata={"help": "Dimension of decoder feedforward network"})
-    d_model: Optional[int] = field(default=1024,
-        metadata={"help": "Dimension of model"})
-    vocab_size: Optional[int] = field(default=128100,
-        metadata={"help": "Vocab size"})
-    max_position_embeddings: Optional[int] = field(default=1024,
-        metadata={"help": "Max position embeddings"})
-    encoder_layerdrop: Optional[float] = field(default=0.0,
-        metadata={"help": "Max position embeddings"})
-    decoder_layerdrop: Optional[float] = field(default=0.0,
-        metadata={"help": "Max position embeddings"})
-    use_bf16: bool = field( default=False,
-        metadata={"help": "Train in bf16 or not"})
-    grad_accum: Optional[int] = field(default=4,
-        metadata={"help": "Number of steps to accumulate gradients over"})
+    decoder_ffn_dim: Optional[int] = field(default=256, metadata={"help": "Dimension of decoder feedforward network"})
+    d_model: Optional[int] = field(default=1024, metadata={"help": "Dimension of model"})
+    vocab_size: Optional[int] = field(default=128100, metadata={"help": "Vocab size"})
+    max_position_embeddings: Optional[int] = field(default=1024, metadata={"help": "Max position embeddings"})
+    encoder_layerdrop: Optional[float] = field(default=0.0, metadata={"help": "Max position embeddings"})
+    decoder_layerdrop: Optional[float] = field(default=0.0, metadata={"help": "Max position embeddings"})
+    use_bf16: bool = field(default=False, metadata={"help": "Train in bf16 or not"})
+    grad_accum: Optional[int] = field(default=4, metadata={"help": "Number of steps to accumulate gradients over"})
 
 
 @dataclass
@@ -209,8 +199,8 @@ def advance_iter_and_group_samples(train_iterator, num_samples, max_seq_length):
     i = 0
     while i < num_total_tokens:
         tokenized_samples = next(train_iterator)
-        tokenized_samples['input_ids'] = tokenized_samples['input_ids'].tolist()
-        tokenized_samples['labels'] = tokenized_samples['labels'].tolist()
+        tokenized_samples["input_ids"] = tokenized_samples["input_ids"].tolist()
+        tokenized_samples["labels"] = tokenized_samples["labels"].tolist()
 
         i += len(tokenized_samples["input_ids"][0])
         # concatenate tokenized samples to list
@@ -301,47 +291,41 @@ if __name__ == "__main__":
 
     # Set seed before initializing model.
     set_seed(training_args.seed)
-    wikitext=(data_args.dataset_path == 'wikitext')
+    wikitext = data_args.dataset_path == "wikitext"
     if not wikitext:
         # Load Datasets
         # Train Dataset - Stream The Pile dataset
-        print('Loading train data')
+        print("Loading train data")
         train_dataset = load_dataset(
-        data_args.dataset_path, 
-        split="train",
-        cache_dir=model_args.cache_dir,
-        streaming=True)
+            data_args.dataset_path, split="train", cache_dir=model_args.cache_dir, streaming=True
+        )
 
-        print('Loading eval data')
+        print("Loading eval data")
         # Test Dataset - Stream The Pile dataset
-            
+
         eval_dataset = load_dataset(
-        data_args.dataset_path, 
-        split="validation",
-        streaming=True,
-        cache_dir=model_args.cache_dir,
+            data_args.dataset_path,
+            split="validation",
+            streaming=True,
+            cache_dir=model_args.cache_dir,
         )
     else:
         # Load Datasets
         # Train Dataset - Stream The Pile dataset
-        print('Loading train data')
+        print("Loading train data")
         train_dataset = load_dataset(
-        data_args.dataset_path,
-        'wikitext-103-raw-v1', 
-        split="train",
-        cache_dir=model_args.cache_dir,
-        streaming=True)
+            data_args.dataset_path, "wikitext-103-raw-v1", split="train", cache_dir=model_args.cache_dir, streaming=True
+        )
 
-        print('Loading eval data')
+        print("Loading eval data")
         # Test Dataset - Stream The Pile dataset
 
-            
         eval_dataset = load_dataset(
-        data_args.dataset_path,
-        'wikitext-103-raw-v1',
-        split="validation",
-        streaming=True,
-        cache_dir=model_args.cache_dir,
+            data_args.dataset_path,
+            "wikitext-103-raw-v1",
+            split="validation",
+            streaming=True,
+            cache_dir=model_args.cache_dir,
         )
 
     # Shuffle the training dataset
@@ -515,7 +499,7 @@ if __name__ == "__main__":
             weight_decay=training_args.weight_decay,
             mask=decay_mask_fn,
         )
-    clip=1.0
+    clip = 1.0
     my_optimizer = optax.chain(
         optax.clip_by_global_norm(clip),
         optimizer,
