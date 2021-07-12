@@ -146,16 +146,29 @@ class DataCollatorForTextInfilling:
 # Code below is by Matt Bui
 @dataclass
 class SentenceTokenize:
-    """Tokenize the document into sentences and add bos and eos tokens"""
+    """Tokenize documents into sentences, add bos and eos tokens and split sentences into smaller chunks if too long."""
 
     sentence_tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
     eos: str = "<s>"
     bos: str = "</s>"
+    max_sentences = 256
+    sentence_stride = 128
 
-    def __call__(self, example: Dict[str, str]) -> Dict[str, str]:
-        sentences = self.sentence_tokenizer.tokenize(example["text"])
-        example["text"] = "".join([self.eos + sentence + self.bos for sentence in sentences])
-        return example
+    def __call__(self, examples: Dict[str, List[str]]) -> Dict[str, List[str]]:
+        is_batched = isinstance(examples["text"], list)
+        if not is_batched:
+            raise ValueError("required batched=True in map() method")
+
+        texts = []
+        for doc in examples["text"]:
+            sentences = self.sentence_tokenizer.tokenize(doc)
+            start_index = 0
+            while start_index < len(sentences):
+                sentence_span = sentences[start_index: min(len(sentences), start_index + self.max_sentences)]
+                texts.append("".join([self.eos + sentence + self.bos for sentence in sentence_span]))
+                start_index += self.sentence_stride
+
+        return {"text": texts}
 
 
 @dataclass
