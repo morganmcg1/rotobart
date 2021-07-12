@@ -31,6 +31,7 @@ import optax
 from datasets import load_dataset
 from flax import jax_utils, traverse_util
 from flax.training import train_state
+from prefetch_generator import BackgroundGenerator
 from flax.training.common_utils import get_metrics, onehot, shard
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -167,7 +168,7 @@ class DataTrainingArguments:
         metadata={"help": "Mean span length of masked tokens"},
     )
     shuffle_buffer_size: int = field(
-        default=10000, metadata={"help": "The number of examples to pre-load for shuffling."}
+        default=1000, metadata={"help": "The number of examples to pre-load for shuffling."}
     )
     num_train_steps: int = field(default=50000, metadata={"help": "The number of training steps."})
     num_eval_samples: int = field(default=50000, metadata={"help": "The number of samples to be used for evaluation"})
@@ -327,14 +328,10 @@ if __name__ == "__main__":
             cache_dir=model_args.cache_dir,
         )
 
-    # Shuffle the training dataset
-    shuffled_train_dataset = train_dataset.shuffle(buffer_size=data_args.shuffle_buffer_size, seed=training_args.seed)
-
     # Sentence Tokenization
     # Used for Sentence Permutation
     sent_tok = SentenceTokenize()
-    # Batching is not yet supported. Not sure if necessary?
-    sent_tokenized_train_dataset = shuffled_train_dataset.map(sent_tok, batched=True, batch_size=1)
+    sent_tokenized_train_dataset = train_dataset.map(sent_tok, batched=True, batch_size=1)
     sent_tokenized_eval_dataset = eval_dataset.map(sent_tok, batched=True, batch_size=1)
 
     # Do Tokenization
@@ -368,6 +365,17 @@ if __name__ == "__main__":
     tokenized_train_dataset = sent_tokenized_train_dataset.map(tokenize_function, batched=True, batch_size=1)
 
     tokenized_eval_dataset = sent_tokenized_eval_dataset.map(tokenize_function, batched=True, batch_size=1)
+
+    # Shuffle the training dataset
+    shuffled_train_dataset = train_dataset.shuffle(buffer_size=data_args.shuffle_buffer_size, seed=training_args.seed)
+
+    # items returned by shuffled dataset is nested in a list, we need to flatten it
+    # e.g: {"input_ids": [[1,2,3,4]]} -> {"input_ids": [1,2,3,4]}
+    def flatten(example):
+        for k, v in example.items():
+            example[k] = v[0]
+        return example
+    shuffled_train_dataset = shuffled_train_dataset.map(flatten)
 
     # Log to Weights and Biases
     if data_args.use_wandb and jax.process_index() == 0:
@@ -548,21 +556,13 @@ if __name__ == "__main__":
     eval_metrics = []
 
     data_collator = DataCollatorForDenoisingTasks(tokenizer)
-    training_iter = iter(
-        DataLoader(
-            tokenized_train_dataset.with_format("torch"),
-            batch_size=train_batch_size,
-            num_workers=data_args.preprocessing_num_workers,
-            prefetch_factor=10,
-        )
+    training_iter = BackgroundGenerator(
+        DataLoader(shuffled_train_dataset.with_format("torch"), batch_size=train_batch_size, collate_fn=data_collator),
+        max_prefetch=128,
     )
-    eval_iter = iter(
-        DataLoader(
-            tokenized_eval_dataset.with_format("torch"),
-            batch_size=train_batch_size,
-            num_workers=data_args.preprocessing_num_workers,
-            prefetch_factor=10,
-        )
+    eval_iter = BackgroundGenerator(
+        DataLoader(tokenized_eval_dataset.with_format("torch"), batch_size=train_batch_size, collate_fn=data_collator),
+        max_prefetch=128,
     )
 
     print(f"Getting {data_args.num_eval_samples} eval samples")
