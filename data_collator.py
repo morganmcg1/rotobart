@@ -166,11 +166,11 @@ class SentenceTokenize:
             start_index = 0
             while start_index < len(sentences):
                 sentence_span = sentences[start_index : min(len(sentences), start_index + self.max_sentences)]
-                text = "".join([self.bos + sentence + self.eos for sentence in sentence_span])
+                text = f"{self.eos}{self.bos}".join([sentence for sentence in sentence_span])
 
                 # trim text by max characters
                 if len(text) > self.max_characters:
-                    text = text[: self.max_characters - len(self.eos)] + self.eos
+                    text = text[: self.max_characters]
                 texts.append(text)
                 start_index += self.sentence_stride
 
