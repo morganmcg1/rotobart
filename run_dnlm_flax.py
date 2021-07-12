@@ -136,9 +136,10 @@ class ModelArguments:
         metadata={"help": "Max position embeddings"})
     decoder_layerdrop: Optional[float] = field(default=0.0,
         metadata={"help": "Max position embeddings"})
-    use_bf16: bool = field(
-      default=False, metadata={"help": "Train in bf16 or not"}
-    )
+    use_bf16: bool = field( default=False,
+        metadata={"help": "Train in bf16 or not"})
+    grad_accum: Optional[int] = field(default=4,
+        metadata={"help": "Number of steps to accumulate gradients over"})
 
 
 @dataclass
@@ -545,11 +546,10 @@ if __name__ == "__main__":
             mask=decay_mask_fn,
         )
     clip=1.0
-    grad_accum=4
     my_optimizer = optax.chain(
         optax.clip_by_global_norm(clip),
         optimizer,
-        optax.apply_every(grad_accum),
+        optax.apply_every(model_args.grad_accum),
     )
     # Setup train state
     state = train_state.TrainState.create(apply_fn=model.__call__, params=model.params, tx=my_optimizer)
