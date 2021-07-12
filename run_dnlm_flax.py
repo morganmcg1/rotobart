@@ -237,10 +237,12 @@ def advance_iter_and_group_samples(train_iterator, num_samples, max_seq_length):
     i = 0
     while i < num_total_tokens:
         tokenized_samples = next(train_iterator)
-        i += len(tokenized_samples["input_ids"])
+        tokenized_samples['input_ids'] = tokenized_samples['input_ids'].tolist()
+        tokenized_samples['labels'] = tokenized_samples['labels'].tolist()
 
+        i += len(tokenized_samples["input_ids"][0])
         # concatenate tokenized samples to list
-        samples = {k: samples[k] + tokenized_samples[k] for k in tokenized_samples.keys()}
+        samples = {k: samples[k] + tokenized_samples[k][0] for k in tokenized_samples.keys()}
 
     # Concatenated tokens are split to lists of length `max_seq_length`.
     # Note that remainedr of % max_seq_length are thrown away.
@@ -326,24 +328,49 @@ if __name__ == "__main__":
 
     # Set seed before initializing model.
     set_seed(training_args.seed)
+    wikitext=(data_args.dataset_path == 'wikitext')
+    if not wikitext:
+        # Load Datasets
+        # Train Dataset - Stream The Pile dataset
+        print('Loading train data')
+        train_dataset = load_dataset(
+        data_args.dataset_path, 
+        split="train",
+        cache_dir=model_args.cache_dir,
+        streaming=True)
 
-    # Load Datasets
-    # Train Dataset - Stream The Pile dataset
-    print('Loading train data')
-    train_dataset = load_dataset(
-      data_args.dataset_path, 
-      split="train",
-      cache_dir=model_args.cache_dir,
-      streaming=True)
+        print('Loading eval data')
+        # Test Dataset - Stream The Pile dataset
 
-    print('Loading eval data')
-    # Test Dataset - Stream The Pile dataset
-    eval_dataset = load_dataset(
-      data_args.dataset_path, 
-      split="validation",
-      streaming=True,
-      cache_dir=model_args.cache_dir,
-    )
+            
+        eval_dataset = load_dataset(
+        data_args.dataset_path, 
+        split="validation",
+        streaming=True,
+        cache_dir=model_args.cache_dir,
+        )
+    else:
+        # Load Datasets
+        # Train Dataset - Stream The Pile dataset
+        print('Loading train data')
+        train_dataset = load_dataset(
+        data_args.dataset_path,
+        'wikitext-103-raw-v1', 
+        split="train",
+        cache_dir=model_args.cache_dir,
+        streaming=True)
+
+        print('Loading eval data')
+        # Test Dataset - Stream The Pile dataset
+
+            
+        eval_dataset = load_dataset(
+        data_args.dataset_path,
+        'wikitext-103-raw-v1',
+        split="validation",
+        streaming=True,
+        cache_dir=model_args.cache_dir,
+        )
 
     # Shuffle the training dataset
     shuffled_train_dataset = train_dataset.shuffle(
@@ -383,12 +410,13 @@ if __name__ == "__main__":
     text_column_name = "text" 
 
     def tokenize_function(examples):
-        return tokenizer(examples[text_column_name], 
+        t = tokenizer(examples[text_column_name], 
           return_attention_mask=False,
           truncation=True,
           max_length=max_seq_length,
           padding='max_length'
           )
+        return t
 
     tokenized_train_dataset = sent_tokenized_train_dataset.map(
         tokenize_function,
@@ -505,9 +533,10 @@ if __name__ == "__main__":
         # For more details about the parameters please check https://github.com/deepmind/optax/blob/ed02befef9bf81cbbf236be3d2b0e032e9ed4a40/optax/_src/alias.py#L74
         optimizer = optax.adafactor(
             learning_rate=linear_decay_lr_schedule_fn,
+            weight_decay_rate=training_args.weight_decay,
         )
     else:
-        adamw = optax.adamw(
+        optimizer = optax.adamw(
             learning_rate=linear_decay_lr_schedule_fn,
             b1=training_args.adam_beta1,
             b2=training_args.adam_beta2,
@@ -515,9 +544,15 @@ if __name__ == "__main__":
             weight_decay=training_args.weight_decay,
             mask=decay_mask_fn,
         )
-
+    clip=1.0
+    grad_accum=4
+    my_optimizer = optax.chain(
+        optax.clip_by_global_norm(clip),
+        optimizer,
+        optax.apply_every(grad_accum),
+    )
     # Setup train state
-    state = train_state.TrainState.create(apply_fn=model.__call__, params=model.params, tx=adamw)
+    state = train_state.TrainState.create(apply_fn=model.__call__, params=model.params, tx=my_optimizer)
 
     def loss_fn(logits, labels):
         shift_logits = logits[..., :-1, :]
@@ -578,8 +613,8 @@ if __name__ == "__main__":
     train_metrics = []
     eval_metrics = []
 
-    training_iter = BackgroundGenerator(iter(tokenized_train_dataset), max_prefetch=50_000)
-    eval_iter = BackgroundGenerator(iter(tokenized_eval_dataset), max_prefetch=50_000)
+    training_iter = BackgroundGenerator(iter(tokenized_train_dataset), max_prefetch=128)
+    eval_iter = BackgroundGenerator(iter(tokenized_eval_dataset), max_prefetch=128)
 
     def data_collator(examples):
       batch = tokenizer.pad(examples, return_tensors=TensorType.NUMPY)
@@ -615,6 +650,7 @@ if __name__ == "__main__":
         # Model forward
         model_inputs = shard(model_inputs.data)
         # model_inputs = shard(samples.data)
+
         state, train_metric, dropout_rngs = p_train_step(state, model_inputs, dropout_rngs)
 
         train_metrics.append(train_metric)
@@ -660,7 +696,7 @@ if __name__ == "__main__":
             if jax.process_index() == 0 and training_args.save_strategy=="epoch":
                 params = jax.device_get(jax.tree_map(lambda x: x[0], state.params))
                 model.save_pretrained(
-                    training_args.output_dir,
+                    training_args.outfput_dir,
                     params=params,
                     push_to_hub=training_args.push_to_hub,
                     commit_message=f"Saving weights and logs of step {step+1}",

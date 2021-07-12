@@ -1,11 +1,5 @@
 import sys
 
-# Set up TPU
-# print("Setting up colab TPU")
-# import jax.tools.colab_tpu
-# jax.tools.colab_tpu.setup_tpu()
-# print(f"Colab TPU setup complete, jax.device_count: {jax.device_count()}")
-
 import math
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, NewType, Optional, Tuple, Union
@@ -43,6 +37,7 @@ class DataCollatorForTextInfilling:
             else:
                 examples_dec = examples_ids
             
+
             #bs of one
             if type(examples_ids[0]) is int:
                 examples_ids = [examples_ids]
@@ -50,9 +45,11 @@ class DataCollatorForTextInfilling:
             if type(examples_dec[0]) is int:
                 examples_dec = [examples_dec]
 
+            
             batch["input_ids"] =  _collate_batch(examples_ids, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
             batch["decoder_input_ids"] = _collate_batch(examples_dec, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
             batch["decoder_input_ids"] = batch["decoder_input_ids"].tolist()
+
 
         elif isinstance(examples[0], (dict, BatchEncoding)):
             batch = self.tokenizer.pad(examples, return_tensors="jax", pad_to_multiple_of=self.pad_to_multiple_of)
@@ -66,10 +63,6 @@ class DataCollatorForTextInfilling:
         batch["input_ids"], batch["labels"] = self.mask_tokens(
             batch["input_ids"], special_tokens_mask=special_tokens_mask
         )
-
-        batch["input_ids"] = batch["input_ids"][0]
-        batch["decoder_input_ids"] = batch["decoder_input_ids"][0]
-        batch["labels"] = batch["labels"][0]
         return batch
 
     def mask_tokens(self,
@@ -153,7 +146,7 @@ class DataCollatorForTextInfilling:
             new_inputs[i, 0:new_example.shape[0]] = new_example
             
         #batching now fixed
-        return new_inputs.tolist(), labels.tolist()
+        return new_inputs, labels
 
 
 #Code below is by Matt Bui
@@ -181,7 +174,7 @@ class DataCollatorForSentencePermutation:
         self.full_stop_index = self.tokenizer.eos_token_id
 
     def __call__(self, example):
-        source = np.asarray(example["input_ids"])
+        source = jnp.array(example["input_ids"])
         decoder_input_ids = example["input_ids"]
 
         full_stops = source == self.full_stop_index
@@ -189,20 +182,20 @@ class DataCollatorForSentencePermutation:
         # Tokens that are full stops, where the previous token is not
         sentence_ends = (full_stops[1:] * ~full_stops[:-1]).nonzero()[0] + 2
         result = source.copy()
-        
-        num_sentences = np.size(sentence_ends, 0)
+
+        num_sentences = jnp.size(sentence_ends, 0)
         num_to_permute = math.ceil((num_sentences * 2 * self.permutate_sentence_ratio) / 2.0)
-        substitutions = np.random.permutation(num_sentences)[:num_to_permute]
-        ordering = np.arange(0, num_sentences)
+        substitutions = random.permutation(self.random_key, num_sentences)[:num_to_permute]
+        ordering = jnp.arange(0, num_sentences)
         ordering = ops.index_update(
-            ordering, substitutions, substitutions[np.random.permutation(num_to_permute)]
+            ordering, substitutions, substitutions[random.permutation(self.random_key, num_to_permute)]
         )
-        
+
         index = 0
         for i in ordering:
             sentence = source[(sentence_ends[i - 1] if i > 0 else 0) : sentence_ends[i]]
             result = ops.index_update(result, ops.index[index : index + jnp.size(sentence, 0)], sentence)
-            index += np.size(sentence, 0)
+            index += jnp.size(sentence, 0)
 
         example["input_ids"] = np.asarray(result).tolist()
         example['decoder_input_ids'] = decoder_input_ids
