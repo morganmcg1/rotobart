@@ -30,8 +30,9 @@ encoder_layerdrop
 decoder_layerdrop
 ```
 
-`testting` : only uses 1 batch, for testing the script
+`testing` : only uses 1 batch, for testing the script
 `adafactor`: will enable adafactor, removing the command will revert to Adam
+`grad_accum`: what value for gradient accumulation to use, default is 4
 
 ```
 python rotobart/run_dnlm_flax.py \

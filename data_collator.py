@@ -8,14 +8,6 @@ import numpy as np
 from numpy.random import permutation, poisson
 from transformers.data.data_collator import _collate_batch
 from transformers.tokenization_utils_base import BatchEncoding, PreTrainedTokenizerBase
-
-# Set up TPU
-# print("Setting up colab TPU")
-# import jax.tools.colab_tpu
-# jax.tools.colab_tpu.setup_tpu()
-# print(f"Colab TPU setup complete, jax.device_count: {jax.device_count()}")
-
-
 nltk.download("punkt")
 
 
@@ -39,21 +31,18 @@ class DataCollatorForTextInfilling:
                 examples_dec = examples["decoder_input_ids"]
             else:
                 examples_dec = examples_ids
-
-            # bs of one
+                
+            #bs of one
             if type(examples_ids[0]) is int:
                 examples_ids = [examples_ids]
             # bs of one
             if type(examples_dec[0]) is int:
                 examples_dec = [examples_dec]
+            
+            batch["input_ids"] =  _collate_batch(examples_ids, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
+            batch["decoder_input_ids"] = _collate_batch(examples_dec, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
+            batch["decoder_input_ids"] = batch["decoder_input_ids"].tolist()
 
-            batch["input_ids"] = _collate_batch(
-                examples_ids, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of
-            )
-            batch["decoder_input_ids"] = _collate_batch(
-                examples_dec, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of
-            )
-            batch["decoder_input_ids"] = batch["decoder_input_ids"]
 
         elif isinstance(examples[0], (dict, BatchEncoding)):
             batch = self.tokenizer.pad(examples, return_tensors="jax", pad_to_multiple_of=self.pad_to_multiple_of)
@@ -69,7 +58,7 @@ class DataCollatorForTextInfilling:
         batch["input_ids"], batch["labels"] = self.mask_tokens(
             batch["input_ids"], special_tokens_mask=special_tokens_mask
         )
-
+        
         return batch
 
     def mask_tokens(self, inputs):
@@ -183,18 +172,20 @@ class DataCollatorForSentencePermutation:
         sentence_ends = (full_stops[1:] * ~full_stops[:-1]).nonzero()[0] + 2
         result = source.copy()
 
-        num_sentences = np.size(sentence_ends, 0)
+        num_sentences = jnp.size(sentence_ends, 0)
         num_to_permute = math.ceil((num_sentences * 2 * self.permutate_sentence_ratio) / 2.0)
-        substitutions = np.random.permutation(num_sentences)[:num_to_permute]
-        ordering = np.arange(0, num_sentences)
-        ordering[substitutions] = substitutions[np.random.permutation(num_to_permute)]
+        substitutions = random.permutation(self.random_key, num_sentences)[:num_to_permute]
+        ordering = jnp.arange(0, num_sentences)
+        ordering = ops.index_update(
+            ordering, substitutions, substitutions[random.permutation(self.random_key, num_to_permute)]
+        )
 
         index = 0
         for i in ordering:
             sentence = source[(sentence_ends[i - 1] if i > 0 else 0) : sentence_ends[i]]
-            result[index : index + sentence.size(0)] = sentence
-            index += np.size(sentence, 0)
-
+            result = ops.index_update(result, ops.index[index : index + jnp.size(sentence, 0)], sentence)
+            index += jnp.size(sentence, 0)
+            
         example["decoder_input_ids"] = example["input_ids"]
         example["input_ids"] = result
 

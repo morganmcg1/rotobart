@@ -4,11 +4,13 @@ import os
 import datasets
 import jsonlines
 import zstandard as zstd
+#from lm_dataformat import Reader
+
 
 logger = datasets.logging.get_logger(__name__)
 _URLS = {
     datasets.Split.TRAIN: [
-        f"https://the-eye.eu/public/AI/pile/train/{str(index).zfill(2)}.jsonl.zst" for index in range(30)
+        f"https://the-eye.eu/public/AI/pile/train/{str(index).zfill(2)}.jsonl.zst" for index in range(3)
     ],
     datasets.Split.VALIDATION: ["https://the-eye.eu/public/AI/pile/val.jsonl.zst"],
     datasets.Split.TEST: ["https://the-eye.eu/public/AI/pile/test.jsonl.zst"],
