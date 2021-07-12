@@ -149,10 +149,11 @@ class SentenceTokenize:
     """Tokenize documents into sentences, add bos and eos tokens and split sentences into smaller chunks if too long."""
 
     sentence_tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
-    eos: str = "<s>"
-    bos: str = "</s>"
+    bos: str = "<s>"
+    eos: str = "</s>"
     max_sentences = 256
     sentence_stride = 128
+    max_characters = 100000
 
     def __call__(self, examples: Dict[str, List[str]]) -> Dict[str, List[str]]:
         is_batched = isinstance(examples["text"], list)
@@ -164,8 +165,13 @@ class SentenceTokenize:
             sentences = self.sentence_tokenizer.tokenize(doc)
             start_index = 0
             while start_index < len(sentences):
-                sentence_span = sentences[start_index: min(len(sentences), start_index + self.max_sentences)]
-                texts.append("".join([self.eos + sentence + self.bos for sentence in sentence_span]))
+                sentence_span = sentences[start_index : min(len(sentences), start_index + self.max_sentences)]
+                text = "".join([self.bos + sentence + self.eos for sentence in sentence_span])
+
+                # trim text by max characters
+                if len(text) > self.max_characters:
+                    text = text[: self.max_characters - len(self.eos)] + self.eos
+                texts.append(text)
                 start_index += self.sentence_stride
 
         return {"text": texts}
