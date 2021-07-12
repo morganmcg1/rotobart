@@ -35,8 +35,8 @@ class Pile(datasets.GeneratorBasedBuilder):
                 datasets.SplitGenerator(name=split, gen_kwargs={"filepaths": dl_manager.download(_URLS[split])})
                 for split in _URLS
             ]
-        data_files = dl_manager.download_and_extract(self.config.data_files)
-        if isinstance(data_files, (str, list, tupe)):
+        data_files = self.config.data_files
+        if isinstance(data_files, (str, list, tuple)):
             if isinstance(data_files, str):
                 if os.path.isdir(data_files):
                     data_files = [
