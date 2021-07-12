@@ -1,7 +1,7 @@
-import sys
 import math
+import sys
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, List, Optional, Tuple
 
 import nltk
 import numpy as np
