@@ -158,7 +158,8 @@ class SentenceTokenize:
     def __call__(self, examples: Dict[str, List[str]]) -> Dict[str, List[str]]:
         is_batched = isinstance(examples["text"], list)
         if not is_batched:
-            raise ValueError("required batched=True in map() method")
+            # raise ValueError("required batched=True in map() method")
+            examples["text"] = [examples["text"]]
 
         texts = []
         for doc in examples["text"]:
