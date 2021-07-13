@@ -372,7 +372,10 @@ if __name__ == "__main__":
     # e.g: {"input_ids": [[1,2,3,4]]} -> {"input_ids": [1,2,3,4]}
     def flatten(example):
         for k, v in example.items():
-            example[k] = v
+			if isinstance(v[0], list):
+                example[k] = v[0]
+            else:
+                example[k] = v
         return example
     shuffled_train_dataset = shuffled_train_dataset.map(flatten)
 
