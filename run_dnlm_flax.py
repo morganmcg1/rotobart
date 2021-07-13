@@ -561,13 +561,12 @@ if __name__ == "__main__":
         max_prefetch=128,
     )
     eval_iter = BackgroundGenerator(
-        DataLoader(tokenized_eval_dataset.with_format("torch"), batch_size=train_batch_size, collate_fn=data_collator),
+        DataLoader(tokenized_eval_dataset.with_format("torch"), batch_size=eval_batch_size, collate_fn=data_collator),
         max_prefetch=128,
     )
 
     print(f"Getting {data_args.num_eval_samples} eval samples")
     max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
-    eval_samples = advance_iter_and_group_samples(eval_iter, data_args.num_eval_samples, max_seq_length)
 
     print("Start training")
     steps = tqdm(range(num_train_steps), desc="Training...", position=0)
@@ -594,13 +593,10 @@ if __name__ == "__main__":
 
         # ======================== Evaluating ==============================
         if step % training_args.eval_steps == 0 and step > 0:
-            eval_samples_idx = jnp.arange(data_args.num_eval_samples)
-            eval_batch_idx = generate_batch_splits(eval_samples_idx, eval_batch_size)
-
-            for i, batch_idx in enumerate(tqdm(eval_batch_idx, desc="Evaluating ...", position=1)):
+            num_eval_batches = data_args.num_eval_samples // eval_batch_size
+            for _ in tqdm(range(num_eval_batches), desc="Evaluating ...", position=1):
                 # process input samples
-                batch_eval_samples = {k: [v[idx] for idx in batch_idx] for k, v in eval_samples.items()}
-                model_inputs = data_collator(batch_eval_samples)
+                model_inputs = next(eval_iter)
 
                 # Model forward
                 model_inputs = shard(model_inputs.data)
