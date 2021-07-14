@@ -27,7 +27,6 @@ from flax.linen import combine_masks, make_causal_mask
 from flax.linen.attention import dot_product_attention_weights
 from jax import lax
 from jax.random import PRNGKey
-
 from transformers.file_utils import add_start_docstrings, replace_return_docstrings
 from transformers.modeling_flax_outputs import (
     FlaxBaseModelOutput,
@@ -40,15 +39,17 @@ from transformers.modeling_flax_outputs import (
 )
 from transformers.modeling_flax_utils import (
     ACT2FN,
-    FlaxPreTrainedModel,
     append_call_sample_docstring,
     append_replace_return_docstrings,
+    FlaxPreTrainedModel,
     overwrite_call_docstring,
 )
 from transformers.utils import logging
+
 from configuration_rotobart import RotoBARTConfig
 from rotobart_utils import *
-#from transformers.models.RotoBART.configuration_RotoBART import RotoBARTConfig
+
+# from transformers.models.RotoBART.configuration_RotoBART import RotoBARTConfig
 
 
 logger = logging.get_logger(__name__)
@@ -237,9 +238,9 @@ class FlaxRotoBARTAttention(nn.Module):
 
     def setup(self) -> None:
         self.head_dim = self.embed_dim // self.num_heads
-        
-        #Rotary applied to the first half of the dimensions
-        self.pe_rotary_dims = self.head_dim //2
+
+        # Rotary applied to the first half of the dimensions
+        self.pe_rotary_dims = self.head_dim // 2
 
         assert (
             self.head_dim * self.num_heads == self.embed_dim
@@ -327,28 +328,27 @@ class FlaxRotoBARTAttention(nn.Module):
         else:
             # self_attention
             key_states = self.k_proj(hidden_states)
-            value_states = self.v_proj(hidden_states)        
+            value_states = self.v_proj(hidden_states)
 
         query_states = self._split_heads(query_states)
         key_states = self._split_heads(key_states)
         value_states = self._split_heads(value_states)
 
-        #Apply rotary positional embeddings
-        k_rot = key_states[:, :, :, :self.pe_rotary_dims]
-        k_pass = key_states[:, :, :, self.pe_rotary_dims:]
+        # Apply rotary positional embeddings
+        k_rot = key_states[:, :, :, : self.pe_rotary_dims]
+        k_pass = key_states[:, :, :, self.pe_rotary_dims :]
 
-        q_rot = query_states[:, :, :, :self.pe_rotary_dims]
-        q_pass = query_states[:, :, :, self.pe_rotary_dims:]
+        q_rot = query_states[:, :, :, : self.pe_rotary_dims]
+        q_pass = query_states[:, :, :, self.pe_rotary_dims :]
 
-        #print(k_rot.shape)
+        # print(k_rot.shape)
         sincos = fixed_pos_embedding(k_rot, seq_dim=1, position_ids=position_ids)
         q_rot = apply_rotary_pos_emb(q_rot, sincos, offset=0)
         k_rot = apply_rotary_pos_emb(k_rot, sincos, offset=0)
 
-        #Concat back together
+        # Concat back together
         key_states = jnp.concatenate([k_rot, k_pass], axis=-1)
         query_states = jnp.concatenate([q_rot, q_pass], axis=-1)
-
 
         # handle cache prepare causal attention mask
         if self.causal:
@@ -371,9 +371,6 @@ class FlaxRotoBARTAttention(nn.Module):
             attention_mask = causal_mask
         elif attention_mask is not None:
             attention_mask = jnp.expand_dims(attention_mask, axis=(-3, -2))
-
-
-
 
         # During fast autoregressive decoding, we feed one position at a time,
         # and cache the keys and values step by step.
@@ -451,7 +448,9 @@ class FlaxRotoBARTEncoderLayer(nn.Module):
         deterministic: bool = True,
     ) -> Tuple[jnp.ndarray]:
         residual = hidden_states
-        hidden_states, attn_weights = self.self_attn(hidden_states=hidden_states, attention_mask=attention_mask, position_ids=position_ids)
+        hidden_states, attn_weights = self.self_attn(
+            hidden_states=hidden_states, attention_mask=attention_mask, position_ids=position_ids
+        )
 
         hidden_states = self.dropout_layer(hidden_states, deterministic=deterministic)
         hidden_states = residual + hidden_states
@@ -476,9 +475,11 @@ class FlaxRotoBARTEncoderLayer(nn.Module):
 class FlaxRotoBARTEncoderLayerCollection(nn.Module):
     config: RotoBARTConfig
     dtype: jnp.dtype = jnp.float32  # the dtype of the computation
+
     def setup(self):
         self.layers = [
-            FlaxRotoBARTEncoderLayer(self.config, name=str(i), dtype=self.dtype) for i in range(self.config.encoder_layers)
+            FlaxRotoBARTEncoderLayer(self.config, name=str(i), dtype=self.dtype)
+            for i in range(self.config.encoder_layers)
         ]
         self.layerdrop = self.config.encoder_layerdrop
 
@@ -530,6 +531,7 @@ class FlaxRotoBARTEncoderLayerCollection(nn.Module):
 class FlaxRotoBARTDecoderLayer(nn.Module):
     config: RotoBARTConfig
     dtype: jnp.dtype = jnp.float32
+
     def setup(self) -> None:
         self.embed_dim = self.config.d_model
         self.self_attn = FlaxRotoBARTAttention(
@@ -565,7 +567,7 @@ class FlaxRotoBARTDecoderLayer(nn.Module):
         self,
         hidden_states: jnp.ndarray,
         attention_mask: jnp.ndarray,
-        position_ids : jnp.ndarray,
+        position_ids: jnp.ndarray,
         encoder_hidden_states: Optional[jnp.ndarray] = None,
         encoder_attention_mask: Optional[jnp.ndarray] = None,
         init_cache: bool = False,
@@ -617,9 +619,11 @@ class FlaxRotoBARTDecoderLayer(nn.Module):
 class FlaxRotoBARTDecoderLayerCollection(nn.Module):
     config: RotoBARTConfig
     dtype: jnp.dtype = jnp.float32  # the dtype of the computation
+
     def setup(self):
         self.layers = [
-            FlaxRotoBARTDecoderLayer(self.config, name=str(i), dtype=self.dtype) for i in range(self.config.decoder_layers)
+            FlaxRotoBARTDecoderLayer(self.config, name=str(i), dtype=self.dtype)
+            for i in range(self.config.decoder_layers)
         ]
         self.layerdrop = self.config.decoder_layerdrop
 
@@ -760,11 +764,10 @@ class FlaxRotoBARTEncoder(nn.Module):
         input_ids = input_ids.reshape(-1, input_shape[-1])
 
         inputs_embeds = self.embed_tokens(input_ids) * self.embed_scale
+        # embed_pos = self.embed_positions(position_ids + self.offset)
+        # position_ids = position_ids.asarray()
 
-        #embed_pos = self.embed_positions(position_ids + self.offset)    
-        #position_ids = position_ids.asarray()
-        
-        hidden_states = inputs_embeds #+ embed_pos
+        hidden_states = inputs_embeds  # + embed_pos
         hidden_states = self.layernorm_embedding(hidden_states)
         hidden_states = self.dropout_layer(hidden_states, deterministic=deterministic)
 
@@ -841,9 +844,9 @@ class FlaxRotoBARTDecoder(nn.Module):
         inputs_embeds = self.embed_tokens(input_ids) * self.embed_scale
 
         # embed positions
-        #positions = self.embed_positions(position_ids + self.offset)
+        # positions = self.embed_positions(position_ids + self.offset)
 
-        hidden_states = inputs_embeds #+ positions
+        hidden_states = inputs_embeds  # + positions
         hidden_states = self.layernorm_embedding(hidden_states)
 
         hidden_states = self.dropout_layer(hidden_states, deterministic=deterministic)
@@ -953,7 +956,7 @@ class FlaxRotoBARTPreTrainedModel(FlaxPreTrainedModel):
         input_shape: Tuple[int] = (1, 1),
         seed: int = 0,
         dtype: jnp.dtype = jnp.float32,
-        **kwargs
+        **kwargs,
     ):
         module = self.module_class(config=config, dtype=dtype, **kwargs)
         super().__init__(config, module, input_shape=input_shape, seed=seed, dtype=dtype)
@@ -1143,9 +1146,7 @@ class FlaxRotoBARTPreTrainedModel(FlaxPreTrainedModel):
             if past_key_values is not None:
                 raise ValueError("Make sure to provide `decoder_position_ids` when passing `past_key_values`.")
 
-            decoder_position_ids = jnp.broadcast_to(
-                jnp.arange(sequence_length)[None, :], (batch_size, sequence_length)
-            )
+            decoder_position_ids = jnp.broadcast_to(jnp.arange(sequence_length)[None, :], (batch_size, sequence_length))
 
         # Handle any PRNG if needed
         rngs = {}
@@ -1236,9 +1237,7 @@ class FlaxRotoBARTPreTrainedModel(FlaxPreTrainedModel):
             decoder_attention_mask = jnp.ones_like(decoder_input_ids)
         if decoder_position_ids is None:
             batch_size, sequence_length = decoder_input_ids.shape
-            decoder_position_ids = jnp.broadcast_to(
-                jnp.arange(sequence_length)[None, :], (batch_size, sequence_length)
-            )
+            decoder_position_ids = jnp.broadcast_to(jnp.arange(sequence_length)[None, :], (batch_size, sequence_length))
 
         # Handle any PRNG if needed
         rngs = {"dropout": dropout_rng} if dropout_rng is not None else {}
@@ -1259,12 +1258,10 @@ class FlaxRotoBARTPreTrainedModel(FlaxPreTrainedModel):
         )
 
 
-
 class FlaxRotoBARTModel(FlaxRotoBARTPreTrainedModel):
     config: RotoBARTConfig
     dtype: jnp.dtype = jnp.float32  # the dtype of the computation
     module_class = FlaxRotoBARTModule
-
 
 
 append_call_sample_docstring(
@@ -1403,9 +1400,7 @@ class FlaxRotoBARTForConditionalGeneration(FlaxRotoBARTPreTrainedModel):
             if past_key_values is not None:
                 raise ValueError("Make sure to provide `decoder_position_ids` when passing `past_key_values`.")
 
-            decoder_position_ids = jnp.broadcast_to(
-                jnp.arange(sequence_length)[None, :], (batch_size, sequence_length)
-            )
+            decoder_position_ids = jnp.broadcast_to(jnp.arange(sequence_length)[None, :], (batch_size, sequence_length))
 
         # Handle any PRNG if needed
         rngs = {}
@@ -1482,7 +1477,6 @@ class FlaxRotoBARTForConditionalGeneration(FlaxRotoBARTPreTrainedModel):
 
         return outputs
 
-
     def prepare_inputs_for_generation(
         self,
         decoder_input_ids,
@@ -1490,7 +1484,7 @@ class FlaxRotoBARTForConditionalGeneration(FlaxRotoBARTPreTrainedModel):
         attention_mask: Optional[jnp.DeviceArray] = None,
         decoder_attention_mask: Optional[jnp.DeviceArray] = None,
         encoder_outputs=None,
-        **kwargs
+        **kwargs,
     ):
         # initializing the cache
         batch_size, seq_length = decoder_input_ids.shape
@@ -1518,7 +1512,6 @@ class FlaxRotoBARTForConditionalGeneration(FlaxRotoBARTPreTrainedModel):
         model_kwargs["past_key_values"] = model_outputs.past_key_values
         model_kwargs["decoder_position_ids"] = model_kwargs["decoder_position_ids"][:, -1:] + 1
         return model_kwargs
-
 
 
 FLAX_RotoBART_CONDITIONAL_GENERATION_DOCSTRING = """
@@ -1642,10 +1635,10 @@ class FlaxRotoBARTForSequenceClassificationModule(nn.Module):
             encoder_attentions=outputs.encoder_attentions,
         )
 
+
 class FlaxRotoBARTForSequenceClassification(FlaxRotoBARTPreTrainedModel):
     module_class = FlaxRotoBARTForSequenceClassificationModule
     dtype = jnp.float32
-
 
 
 append_call_sample_docstring(
@@ -1726,7 +1719,6 @@ class FlaxRotoBARTForQuestionAnsweringModule(nn.Module):
 class FlaxRotoBARTForQuestionAnswering(FlaxRotoBARTPreTrainedModel):
     module_class = FlaxRotoBARTForQuestionAnsweringModule
     dtype = jnp.float32
-
 
 
 append_call_sample_docstring(
