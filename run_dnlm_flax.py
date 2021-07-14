@@ -444,6 +444,12 @@ if __name__ == "__main__":
     train_batch_size = int(training_args.per_device_train_batch_size) * jax.device_count()
     eval_batch_size = int(training_args.per_device_eval_batch_size) * jax.device_count()
 
+    # Log batch sizes to Weights and Biases
+    if data_args.use_wandb and jax.process_index() == 0:
+    	wandb.config.update({'virtual_train_bs': int(model_args.grad_accum * train_batch_size)})
+	wandb.config.update({'train_bs': train_batch_size})
+	wandb.config.update({'eval_bs': eval_batch_size})
+	
     # define number steps per stream epoch
     num_train_steps = data_args.num_train_steps
 
@@ -502,8 +508,12 @@ if __name__ == "__main__":
     # Setup train state
     state = train_state.TrainState.create(apply_fn=model.__call__, params=model.params, tx=my_optimizer)
     
-    print("Number of Parameters: ", sum(p.size for p in jax.tree_leaves(model.params)))
-    
+    num_parameters = sum(p.size for p in jax.tree_leaves(model.params))
+    print(f"Number of Parameters: {num_parameters}")
+    # Log num model parameters to Weights and Biases
+    if data_args.use_wandb and jax.process_index() == 0:    
+	wandb.config.update({'model_parameters' : num_parameters})
+	
     def loss_fn(logits, labels):
         shift_logits = logits[..., :-1, :]
         shift_labels = labels[..., 1:]
