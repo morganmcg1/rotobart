@@ -388,6 +388,11 @@ if __name__ == "__main__":
         wandb.config.update(training_args)  # optional, log your configs
         wandb.config.update(model_args)  # optional, log your configs
         wandb.config.update(data_args)  # optional, log your configs
+	
+	# Set up model logging to Weights & Biases
+	model_artifact = wandb.Artifact(f'{wandb.run.id}', type='model')
+	model_artifact.add_dir(training_args.outfput_dir)
+
 
     # Enable tensorboard only on the master node
     has_tensorboard = is_tensorboard_available()
@@ -643,6 +648,10 @@ if __name__ == "__main__":
                     push_to_hub=training_args.push_to_hub,
                     commit_message=f"Saving weights and logs of step {step+1}",
                 )
+		# Log model to Weights and Biases too
+    		if data_args.use_wandb and jax.process_index() == 0:
+		    wandb.log_artifact(model_artifact, aliases=[f'{step+1}'])
+		    
 
         # save checkpoint on steps and push checkpoint to the hub
         if (training_args.save_steps % (step + 1)) == 0 and training_args.save_strategy == "steps":
