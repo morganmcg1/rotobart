@@ -1,18 +1,5 @@
 # RotoBART
 
-## ToDos:
-- Ensure fixed sequence lengths (padding), to avoid jax recompilation
-- Test on our TPU VM
-- Check we're using all TPU capacity
-- Define hyperparamters to train on
-- ~~Model parallel ?~~
-- ~~Train 128k sentencepiece tokenizer on the Pile~~
-- ~~add sentence permutation to train script~~
-- ~~add text infill to train script~~
-- ~~Add checkpointing~~
-
-
-
 ## Running the script
 
 ### Script arguemnts
@@ -30,9 +17,14 @@ encoder_layerdrop
 decoder_layerdrop
 ```
 
+Training Arguments:
+
 `testing` : only uses 1 batch, for testing the script
 `adafactor`: will enable adafactor, removing the command will revert to Adam
 `grad_accum`: what value for gradient accumulation to use, default is 4
+`use_bf16`: convert the model to bf16
+`colab_tpu`: if running on a colab TPU
+`use_wandb`: log using Weights & Biases (via Tensorboard)
 
 ```
 python rotobart/run_dnlm_flax.py \
@@ -41,7 +33,7 @@ python rotobart/run_dnlm_flax.py \
   --dataset_path rotobart/pile.py \
   --model_name_or_path rotobart \
   --tokenizer_name ./rotobart/vocab-2/the_pile.model \
-  --shuffle_buffer_size 100_000 \
+  --shuffle_buffer_size 1000 \
   --do_train --do_eval \
   --max_seq_length 1024 \
   --encoder_layers 2 \
