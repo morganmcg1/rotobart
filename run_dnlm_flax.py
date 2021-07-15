@@ -262,6 +262,9 @@ if __name__ == "__main__":
             "Use --overwrite_output_dir to overcome."
         )
 
+    # Make our output dir
+    os.makedirs(training_args.output_dir, exist_ok=True)
+
     # Setup Colab TPU
     if data_args.colab_tpu:
         print("Setting up colab TPU")
