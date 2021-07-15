@@ -31,6 +31,8 @@ Training Arguments:
 
 `use_wandb`: log using Weights & Biases (via Tensorboard)
 
+`save_strategy`: whether or not to save model checkpoints based on steps or epoch
+
 
 ```
 python rotobart/run_dnlm_flax.py \
@@ -50,6 +52,7 @@ python rotobart/run_dnlm_flax.py \
   --num_train_steps 1000 \
   --eval_steps 1000 \
   --save_steps 1000 \
+  --save_strategy steps \
   --num_eval_samples 100 \
   --warmup_steps 30 \
   --learning_rate 1e-4 \
