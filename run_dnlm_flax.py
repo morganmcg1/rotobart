@@ -363,6 +363,7 @@ if __name__ == "__main__":
             truncation=True,
             max_length=max_seq_length,
             padding="max_length",
+			return_token_type_ids=False
         )
 
     tokenized_train_dataset = sent_tokenized_train_dataset.map(tokenize_function, batched=True, batch_size=1)
@@ -370,7 +371,7 @@ if __name__ == "__main__":
     tokenized_eval_dataset = sent_tokenized_eval_dataset.map(tokenize_function, batched=True, batch_size=1)
 
     # Shuffle the training dataset
-    shuffled_train_dataset = train_dataset.shuffle(buffer_size=data_args.shuffle_buffer_size, seed=training_args.seed)
+    shuffled_train_dataset = tokenized_train_dataset.shuffle(buffer_size=data_args.shuffle_buffer_size, seed=training_args.seed)
 
     # items returned by shuffled dataset is nested in a list, we need to flatten it
     # e.g: {"input_ids": [[1,2,3,4]]} -> {"input_ids": [1,2,3,4]}
