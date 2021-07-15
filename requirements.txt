@@ -1,5 +1,6 @@
 jax[tpu]>=0.2.16
 flax
+optax
 datasets
 datasets[streaming,jsonlines,zstandard]
 transformers
