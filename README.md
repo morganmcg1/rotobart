@@ -58,7 +58,6 @@ python rotobart/run_dnlm_flax.py \
   --learning_rate 1e-4 \
   --use_wandb \
   --testing \
-  --colab_tpu \
   --use_bf16 \
   --adafactor
 ```
