@@ -592,7 +592,6 @@ if __name__ == "__main__":
         max_prefetch=128,
     )
 
-    print(f"Getting {data_args.num_eval_samples} eval samples")
     max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
 
     print("Start training")
