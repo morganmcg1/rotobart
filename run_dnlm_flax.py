@@ -599,7 +599,7 @@ if __name__ == "__main__":
 #                 write_eval_metric(summary_writer, eval_metrics, step)
 		
             if jax.process_index() == 0:
-                log_dict[f"eval/eval_loss"] = np.asarray(device_array)eval_metrics['loss'])[0]
+                log_dict[f"eval/eval_loss"] = np.asarray(eval_metrics['loss'])[0]
                 log_dict[f"eval/eval_accuracy"] = np.asarray(eval_metrics['accuracy'])[0]
 		
             eval_metrics = []
