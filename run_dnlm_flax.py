@@ -351,8 +351,8 @@ if __name__ == "__main__":
     text_column_name = "text"
 
     def tokenize_function(examples):
-        print(len(examples['input_ids']))
-        print(examples['input_ids'])
+        print(len(examples))
+        print(examples)
         print()
         return tokenizer(
             examples[text_column_name],
