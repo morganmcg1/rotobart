@@ -599,7 +599,7 @@ if __name__ == "__main__":
 		
             if jax.process_index() == 0:			
                 for metric_name, value in eval_metrics.items():
-                    log_dict[f"eval/eval_{metric_name}"] = value})			
+                    log_dict[f"eval/eval_{metric_name}"] = value			
 		
             eval_metrics = []
 
