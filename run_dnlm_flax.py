@@ -333,7 +333,7 @@ if __name__ == "__main__":
     if data_args.use_wandb and jax.process_index() == 0:
         import wandb
 
-        wandb.init(entity="wandb", project="hf-flax-rotobart", sync_tensorboard=True)
+        wandb.init(entity="wandb", project="hf-flax-rotobart", sync_tensorboard=False)
         wandb.config.update(training_args)  # optional, log your configs
         wandb.config.update(model_args)  # optional, log your configs
         wandb.config.update(data_args)  # optional, log your configs
@@ -546,76 +546,98 @@ if __name__ == "__main__":
         # ======================== Training ================================
         model_inputs = next(training_iter)
 
-#         # Model forward
-#         model_inputs = shard(model_inputs.data)
-#         # model_inputs = shard(samples.data)
+        # Model forward
+        model_inputs = shard(model_inputs.data)
+        # model_inputs = shard(samples.data)
 
-#         state, train_metric, dropout_rngs = p_train_step(state, model_inputs, dropout_rngs)
+        state, train_metric, dropout_rngs = p_train_step(state, model_inputs, dropout_rngs)
 
-#         train_metrics.append(train_metric)
+        train_metrics.append(train_metric)
 
-#         if step % training_args.logging_steps == 0 and step > 0:
-#             steps.write(
-#                 f"Step... ({step} | Loss: {train_metric['loss'].mean()}, Learning Rate: {train_metric['learning_rate'].mean()})"
-#             )
-#             train_time += time.time() - train_start
+        if step % training_args.logging_steps == 0 and step > 0:
+            steps.write(
+                f"Step... ({step} | Loss: {train_metric['loss'].mean()}, Learning Rate: {train_metric['learning_rate'].mean()})"
+            )
+            train_time += time.time() - train_start
 #             if has_tensorboard and jax.process_index() == 0:
 #                 write_train_metric(summary_writer, train_metrics, train_time, step)
-#             train_metrics = []
 
-#         # ======================== Evaluating ==============================
-#         if step % training_args.eval_steps == 0 and step > 0:
-#             num_eval_batches = data_args.num_eval_samples // eval_batch_size
-#             for _ in tqdm(range(num_eval_batches), desc="Evaluating ...", position=1):
-#                 # process input samples
-#                 model_inputs = next(eval_iter)
+            if jax.process_index() == 0:
+                train_metrics = get_metrics(train_metrics)
+                log_dict={}
+                for key, vals in train_metrics.items():
+                    tag = f"train_{key}"
+                    for i, val in enumerate(vals):
+                        log_dict[tag] = val        
+                wandb.log(log_dict)
 
-#                 # Model forward
-#                 model_inputs = shard(model_inputs.data)
-#                 metrics = p_eval_step(state.params, model_inputs)
-#                 eval_metrics.append(metrics)
+            train_metrics = []
 
-#             # normalize eval metrics
-#             eval_metrics = get_metrics(eval_metrics)
-#             eval_metrics = jax.tree_map(jnp.sum, eval_metrics)
-#             eval_normalizer = eval_metrics.pop("normalizer")
-#             eval_metrics = jax.tree_map(lambda x: x / eval_normalizer, eval_metrics)
+        # ======================== Evaluating ==============================
+        if step % training_args.eval_steps == 0 and step > 0:
+            num_eval_batches = data_args.num_eval_samples // eval_batch_size
+            for _ in tqdm(range(num_eval_batches), desc="Evaluating ...", position=1):
+                # process input samples
+                model_inputs = next(eval_iter)
 
-#             # Update progress bar
-#             steps.desc = f"Step... ({step + 1}/{num_train_steps} | Loss: {eval_metrics['loss']}, Acc: {eval_metrics['accuracy']})"
+                # Model forward
+                model_inputs = shard(model_inputs.data)
+                metrics = p_eval_step(state.params, model_inputs)
+                eval_metrics.append(metrics)
+
+            # normalize eval metrics
+            eval_metrics = get_metrics(eval_metrics)
+            eval_metrics = jax.tree_map(jnp.sum, eval_metrics)
+            eval_normalizer = eval_metrics.pop("normalizer")
+            eval_metrics = jax.tree_map(lambda x: x / eval_normalizer, eval_metrics)
+
+            # Update progress bar
+            steps.desc = f"Step... ({step + 1}/{num_train_steps} | Loss: {eval_metrics['loss']}, Acc: {eval_metrics['accuracy']})"
 
 #             if has_tensorboard and jax.process_index() == 0:
 #                 write_eval_metric(summary_writer, eval_metrics, step)
-#             eval_metrics = []
+		
+            if jax.process_index() == 0:
+                eval_metrics = get_metrics(eval_metrics)
+                log_dict={}
+                for key, vals in eval_metrics.items():
+                    tag = f"eval_{key}"
+                    for i, val in enumerate(vals):
+                        log_dict[tag] = val        
+                wandb.log(log_dict)
+		
+            eval_metrics = []
 
-#             # save checkpoint after each epoch and push checkpoint to the hub
-#             if jax.process_index() == 0 and training_args.save_strategy == "epoch":
-#                 params = jax.device_get(jax.tree_map(lambda x: x[0], state.params))
-#                 model.save_pretrained(
-#                     training_args.output_dir,
-#                     params=params,
-#                     push_to_hub=training_args.push_to_hub,
-#                     commit_message=f"Saving weights and logs of step {step+1}",
-#                 )
+            # save checkpoint after each epoch and push checkpoint to the hub
+            if jax.process_index() == 0 and training_args.save_strategy == "epoch":
+                params = jax.device_get(jax.tree_map(lambda x: x[0], state.params))
+                model.save_pretrained(
+                    training_args.output_dir,
+                    params=params,
+                    push_to_hub=training_args.push_to_hub,
+                    commit_message=f"Saving weights and logs of step {step+1}",
+                )
 
-# 		        # Log model to Weights and Biases too
-#                 if data_args.use_wandb:
-#                     wandb.log_artifact(model_artifact, aliases=[f'{step+1}'])
+		        # Log model to Weights and Biases too
+                if data_args.use_wandb:
+                    print('Saving checkpoint to W&B Artifacts')	
+                    wandb.log_artifact(model_artifact, aliases=[f'{step}'])
 		    
 
-#         # save checkpoint on steps and push checkpoint to the hub
-#         if (training_args.save_steps % (step + 1)) == 0 and training_args.save_strategy == "steps":
-#             params = jax.device_get(jax.tree_map(lambda x: x[0], state.params))
-#             model.save_pretrained(
-#                 training_args.output_dir,
-#                 params=params,
-#                 push_to_hub=training_args.push_to_hub,
-#                 commit_message=f"Saving weights and logs of step {step+1}",
-#             )
+        # save checkpoint on steps and push checkpoint to the hub
+        if (training_args.save_steps % (step + 1)) == 0 and training_args.save_strategy == "steps":
+            params = jax.device_get(jax.tree_map(lambda x: x[0], state.params))
+            model.save_pretrained(
+                training_args.output_dir,
+                params=params,
+                push_to_hub=training_args.push_to_hub,
+                commit_message=f"Saving weights and logs of step {step+1}",
+            )
         
-# 		    # Log model to Weights and Biases too
-#             if data_args.use_wandb:
-#                 wandb.log_artifact(model_artifact, aliases=[f'{step+1}'])
+		    # Log model to Weights and Biases too
+            if data_args.use_wandb:
+                print('Saving checkpoint to W&B Artifacts')	
+                wandb.log_artifact(model_artifact, aliases=[f'{step}'])
 
-#         # update tqdm bar
+        # update tqdm bar
         steps.update(1)
