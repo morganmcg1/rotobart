@@ -61,3 +61,9 @@ python rotobart/run_dnlm_flax.py \
   --use_bf16 \
   --adafactor
 ```
+
+alt
+
+```
+python3 run_dnlm_flax.py   --output_dir rotobart_output   --overwrite_output_dir   --dataset_path pile.py   --model_name_or_path rotobart   --tokenizer_name vocab-2/the_pile.model   --shuffle_buffer_size 1000   --do_train --do_eval --max_position_embeddings 2048  --max_seq_length 2048   --encoder_layers 6   --decoder_layers 6   --per_device_train_batch_size 1   --per_device_eval_batch_size 1   --logging_steps 100   --num_train_steps 50000   --eval_steps 2500   --save_steps 2500   --save_strategy steps   --num_eval_samples 5000   --warmup_steps 5000   --learning_rate 1e-4   --use_wandb   --use_bf16   --adafactor
+```
