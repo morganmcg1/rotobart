@@ -238,27 +238,8 @@ if __name__ == "__main__":
         jax.tools.colab_tpu.setup_tpu()
         print(f"Colab TPU setup complete, jax.device_count: {jax.device_count()}")
 
-    print(f"DEVICE COUNT: {jax.local_device_count()}")
+    print(f"\nDEVICE COUNT: {jax.local_device_count()}\n")
 	
-    # TODO: Fix logger
-    # # Setup logging
-    # logging.basicConfig(
-    #     format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
-    #     level="NOTSET",
-    #     datefmt="[%X]",
-    # )
-
-    # TODO: Fix logger
-    # Log on each process the small summary:
-    # logger = logging.getLogger(__name__)
-    # logger.warning(
-    #     f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}"
-    #     + f"distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
-    # )
-
-    # Set the verbosity to info of the Transformers logger (on main process only):
-    # logger.info(f"Training/evaluation parameters {training_args}")
-
     # Set seed before initializing model.
     set_seed(training_args.seed)
     wikitext = data_args.dataset_path == "wikitext"
@@ -320,8 +301,7 @@ if __name__ == "__main__":
     text_column_name = "text"
 
     def tokenize_function(examples):
-        print(len(examples))
-        print(examples)
+        print(len(examples[text_column_name]))
         print()
         return tokenizer(
             examples[text_column_name],
