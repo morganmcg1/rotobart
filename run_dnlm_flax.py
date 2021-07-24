@@ -674,4 +674,4 @@ if __name__ == "__main__":
 #                 wandb.log_artifact(model_artifact, aliases=[f'{step+1}'])
 
 #         # update tqdm bar
-#         steps.update(1)
+        steps.update(1)
