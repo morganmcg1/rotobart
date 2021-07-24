@@ -309,8 +309,8 @@ if __name__ == "__main__":
 			return_token_type_ids=False
         )
 
-    sent_tokenized_train_dataset = sent_tokenized_train_dataset.filter(lambda example: len(examples[text_column_name]) > 0)
-    sent_tokenized_eval_dataset = sent_tokenized_eval_dataset.filter(lambda example: len(examples[text_column_name]) > 0)
+#     sent_tokenized_train_dataset = sent_tokenized_train_dataset.filter(lambda example: len(examples[text_column_name]) > 0)
+#     sent_tokenized_eval_dataset = sent_tokenized_eval_dataset.filter(lambda example: len(examples[text_column_name]) > 0)
 
     tokenized_train_dataset = sent_tokenized_train_dataset.map(tokenize_function, batched=True, batch_size=1)
     tokenized_eval_dataset = sent_tokenized_eval_dataset.map(tokenize_function, batched=True, batch_size=1)
