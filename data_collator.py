@@ -162,10 +162,11 @@ class SentenceTokenize:
             examples["text"] = [examples["text"]]
 
         texts = []
+        print(f"len(examples['text'] : {len(examples["text"])}")
         for doc in examples["text"]:
             sentences = self.sentence_tokenizer.tokenize(doc)
             start_index = 0
-            print(f"examples len: {len(examples["text"])}")
+            print(f"doc len: {len(doc)")
             print(f"sent_tok len: {len(sentences)}")
             while start_index < len(sentences):
                 sentence_span = sentences[start_index : min(len(sentences), start_index + self.max_sentences)]
