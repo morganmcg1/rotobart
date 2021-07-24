@@ -216,10 +216,6 @@ def advance_iter_and_group_samples(train_iterator, num_samples, max_seq_length):
         return result
 
     grouped_samples = group_texts(samples)
-
-    # print(grouped_samples)
-    # print(len(grouped_samples))
-
     return grouped_samples
 
 
@@ -273,6 +269,8 @@ if __name__ == "__main__":
         jax.tools.colab_tpu.setup_tpu()
         print(f"Colab TPU setup complete, jax.device_count: {jax.device_count()}")
 
+    print(f"DEVICE COUNT: {jax.local_device_count()}")
+	
     # TODO: Fix logger
     # # Setup logging
     # logging.basicConfig(
@@ -338,11 +336,6 @@ if __name__ == "__main__":
     sent_tokenized_eval_dataset = eval_dataset.map(sent_tok, batched=True, batch_size=1)
 
     # Do Tokenization
-    # Load tokenizer
-    # tokenizer = BartTokenizerFast.from_pretrained(
-    #     model_args.tokenizer_name, cache_dir=model_args.cache_dir
-    # )
-
     tokenizer = DebertaV2Tokenizer.from_pretrained(
         model_args.tokenizer_name,
         unk_token="<unk>",
@@ -358,7 +351,9 @@ if __name__ == "__main__":
     text_column_name = "text"
 
     def tokenize_function(examples):
-        print(len(examples))
+        print(len(examples['input_ids']))
+        print(examples['input_ids'])
+	print()
         return tokenizer(
             examples[text_column_name],
             truncation=True,
@@ -368,7 +363,6 @@ if __name__ == "__main__":
         )
 
     tokenized_train_dataset = sent_tokenized_train_dataset.map(tokenize_function, batched=True, batch_size=1)
-
     tokenized_eval_dataset = sent_tokenized_eval_dataset.map(tokenize_function, batched=True, batch_size=1)
 
     # Shuffle the training dataset
@@ -420,7 +414,7 @@ if __name__ == "__main__":
     # Initialize our training
     rng = jax.random.PRNGKey(training_args.seed)
     dropout_rngs = jax.random.split(rng, jax.local_device_count())
-
+	
     # Load Model
     # TODO: Leverage AutoConfig
     config = RotoBARTConfig(
