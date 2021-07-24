@@ -636,7 +636,7 @@ if __name__ == "__main__":
                 wandb.log_artifact(model_artifact, aliases=[f'{step}'])
 
 	# Log all train metrics, and sometimes eval metrics, to W&B
-	print(log_dict)
+        print(log_dict)
         wandb.log(log_dict)
         
 	# update tqdm bar
