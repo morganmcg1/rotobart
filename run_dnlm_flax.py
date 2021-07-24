@@ -188,37 +188,6 @@ def generate_batch_splits(samples_idx: jnp.ndarray, batch_size: int) -> jnp.ndar
     return batch_idx
 
 
-def advance_iter_and_group_samples(train_iterator, num_samples, max_seq_length):
-    """
-    The training iterator is advanced so that after groupifying the samples,
-    `num_samples` of length `max_seq_length` are returned.
-    """
-    num_total_tokens = max_seq_length * num_samples
-    samples = defaultdict(list)
-
-    i = 0
-    while i < num_total_tokens:
-        tokenized_samples = next(train_iterator)
-        tokenized_samples["input_ids"] = tokenized_samples["input_ids"].tolist()
-        tokenized_samples["labels"] = tokenized_samples["labels"].tolist()
-
-        i += len(tokenized_samples["input_ids"][0])
-        # concatenate tokenized samples to list
-        samples = {k: samples[k] + tokenized_samples[k][0] for k in tokenized_samples.keys()}
-
-    # Concatenated tokens are split to lists of length `max_seq_length`.
-    # Note that remainedr of % max_seq_length are thrown away.
-    def group_texts(examples):
-        result = {
-            k: [t[i : i + max_seq_length] for i in range(0, num_total_tokens, max_seq_length)]
-            for k, t in examples.items()
-        }
-        return result
-
-    grouped_samples = group_texts(samples)
-    return grouped_samples
-
-
 def write_train_metric(summary_writer, train_metrics, train_time, step):
     summary_writer.scalar("train_time", train_time, step)
 
