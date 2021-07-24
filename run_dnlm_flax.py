@@ -566,10 +566,10 @@ if __name__ == "__main__":
             train_metrics = get_metrics(train_metrics)
             log_dict={}
             for key, vals in train_metrics.items():
-                tag = f"train_{key}"
+                tag = f"train/train_{key}"
                 for i, val in enumerate(vals):
                     log_dict[tag] = val        
-            wandb.log(log_dict)
+#             wandb.log(log_dict)
 
             train_metrics = []
 
@@ -597,14 +597,9 @@ if __name__ == "__main__":
 #             if has_tensorboard and jax.process_index() == 0:
 #                 write_eval_metric(summary_writer, eval_metrics, step)
 		
-            if jax.process_index() == 0:
-                eval_metrics = get_metrics(eval_metrics)
-                log_dict={}
-                for key, vals in eval_metrics.items():
-                    tag = f"eval_{key}"
-                    for i, val in enumerate(vals):
-                        log_dict[tag] = val        
-                wandb.log(log_dict)
+            if jax.process_index() == 0:			
+                for metric_name, value in eval_metrics.items():
+                    log_dict[f"eval/eval_{metric_name}"] = value})			
 		
             eval_metrics = []
 
@@ -639,5 +634,6 @@ if __name__ == "__main__":
                 print('Saving checkpoint to W&B Artifacts')	
                 wandb.log_artifact(model_artifact, aliases=[f'{step}'])
 
+	wandb.log(log_dict)
         # update tqdm bar
         steps.update(1)
