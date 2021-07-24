@@ -593,14 +593,14 @@ if __name__ == "__main__":
 
             # Update progress bar
             steps.desc = f"Step... ({step + 1}/{num_train_steps} | Loss: {eval_metrics['loss']}, Acc: {eval_metrics['accuracy']})"
-            print(f"Step... ({step + 1}/{num_train_steps} | Loss: {eval_metrics['loss']}, Acc: {eval_metrics['accuracy']})")
+#             print(f"Step... ({step + 1}/{num_train_steps} | Loss: {eval_metrics['loss']}, Acc: {eval_metrics['accuracy']})")
 
 #             if has_tensorboard and jax.process_index() == 0:
 #                 write_eval_metric(summary_writer, eval_metrics, step)
 		
             if jax.process_index() == 0:
-                log_dict[f"eval/eval_loss"] = np.asarray(eval_metrics['loss'])[0]
-                log_dict[f"eval/eval_accuracy"] = np.asarray(eval_metrics['accuracy'])[0]
+                log_dict[f"eval/eval_loss"] = np.asarray(eval_metrics['loss'])
+                log_dict[f"eval/eval_accuracy"] = np.asarray(eval_metrics['accuracy'])
 		
             eval_metrics = []
 
@@ -636,7 +636,7 @@ if __name__ == "__main__":
                 wandb.log_artifact(model_artifact, aliases=[f'{step}'])
 
 	# Log all train metrics, and sometimes eval metrics, to W&B
-        print(log_dict)
+#         print(log_dict)
         wandb.log(log_dict)
         
 	# update tqdm bar
