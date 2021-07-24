@@ -562,14 +562,14 @@ if __name__ == "__main__":
 #             if has_tensorboard and jax.process_index() == 0:
 #                 write_train_metric(summary_writer, train_metrics, train_time, step)
 
-            if jax.process_index() == 0:
-                train_metrics = get_metrics(train_metrics)
-                log_dict={}
-                for key, vals in train_metrics.items():
-                    tag = f"train_{key}"
-                    for i, val in enumerate(vals):
-                        log_dict[tag] = val        
-                wandb.log(log_dict)
+        if jax.process_index() == 0:
+            train_metrics = get_metrics(train_metrics)
+            log_dict={}
+            for key, vals in train_metrics.items():
+                tag = f"train_{key}"
+                for i, val in enumerate(vals):
+                    log_dict[tag] = val        
+            wandb.log(log_dict)
 
             train_metrics = []
 
