@@ -162,12 +162,12 @@ class SentenceTokenize:
             examples["text"] = [examples["text"]]
 
         texts = []
-        print(f"len(examples['text'] : {len(examples['text'])}")
+#         print(f"len(examples['text'] : {len(examples['text'])}")
         for doc in examples["text"]:
             sentences = self.sentence_tokenizer.tokenize(doc)
             start_index = 0
-            print(f"doc len: {len(doc)}")
-            print(f"sent_tok len: {len(sentences)}")
+#             print(f"doc len: {len(doc)}")
+#             print(f"sent_tok len: {len(sentences)}")
             while start_index < len(sentences):
                 sentence_span = sentences[start_index : min(len(sentences), start_index + self.max_sentences)]
                 text = f"{self.eos}{self.bos}".join([sentence for sentence in sentence_span])
@@ -177,8 +177,8 @@ class SentenceTokenize:
                     text = text[: self.max_characters]
                 texts.append(text)
                 start_index += self.sentence_stride
-        print(len(texts))
-        print()      
+#         print(len(texts))
+#         print()      
         return {"text": texts}
 
 
