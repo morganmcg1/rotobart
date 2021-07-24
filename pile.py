@@ -71,5 +71,6 @@ class Pile(datasets.GeneratorBasedBuilder):
                 f = io.TextIOWrapper(f, encoding="utf-8")
                 f = jsonlines.Reader(f)
                 for line in f:
-                    yield id_, {"id": id_, "text": line["text"], "pile_set_name": line["meta"]["pile_set_name"]}
-                    id_ += 1
+                    if len(line["text"]) > 0:
+                        yield id_, {"id": id_, "text": line["text"], "pile_set_name": line["meta"]["pile_set_name"]}
+                        id_ += 1
