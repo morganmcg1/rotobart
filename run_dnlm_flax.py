@@ -634,6 +634,6 @@ if __name__ == "__main__":
                 print('Saving checkpoint to W&B Artifacts')	
                 wandb.log_artifact(model_artifact, aliases=[f'{step}'])
 
-	wandb.log(log_dict)
+        wandb.log(log_dict)
         # update tqdm bar
         steps.update(1)
